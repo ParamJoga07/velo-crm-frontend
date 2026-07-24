@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Enterprise palette — muted steel/slate, no logo teal, no neon */
+:root {
+  --color-background: #f1f3f5;
+  --color-foreground: #1c1f26;
+  --color-surface: #f7f8fa;
+  --color-surface-muted: #ebeef2;
+  --color-surface-raised: #ffffff;
+  --color-border: #d5dae1;
+  --color-input: #d5dae1;
+  --color-ring: #3d5a80;
+
+  --color-primary: #3d5a80;
+  --color-primary-foreground: #ffffff;
+  --color-primary-muted: #e4eaf1;
+  --color-primary-dark: #2c4260;
+
+  --color-navy: #1c1f26;
+  --color-navy-muted: #2a303c;
+
+  --color-accent: #3d5a80;
+  --color-accent-foreground: #ffffff;
+
+  --color-success: #2f6f4e;
+  --color-warning: #9a6700;
+  --color-danger: #a33b3b;
+  --color-muted: #ebeef2;
+  --color-muted-foreground: #6b7280;
+
+  --rail-bg: #1c1f26;
+  --rail-fg: #9ca3af;
+  --rail-active: #ffffff;
+  --topbar-bg: #ffffff;
+  --sidebar-bg: #f7f8fa;
+  --login-bg: #1c1f26;
+  --login-glow: rgba(61, 90, 128, 0.22);
+}
+
+.dark {
+  --color-background: #0f1218;
+  --color-foreground: #e6e8ec;
+  --color-surface: #161a22;
+  --color-surface-muted: #1e2430;
+  --color-surface-raised: #1a1f29;
+  --color-border: #2a3140;
+  --color-input: #2a3140;
+  --color-ring: #7a9bbf;
+
+  --color-primary: #7a9bbf;
+  --color-primary-foreground: #0f1218;
+  --color-primary-muted: #243041;
+  --color-primary-dark: #93b0cf;
+
+  --color-navy: #e6e8ec;
+  --color-navy-muted: #2a3140;
+
+  --color-accent: #7a9bbf;
+  --color-accent-foreground: #0f1218;
+
+  --color-success: #5b9a78;
+  --color-warning: #c4a035;
+  --color-danger: #c46b6b;
+  --color-muted: #1e2430;
+  --color-muted-foreground: #8b93a1;
+
+  --rail-bg: #0a0c10;
+  --rail-fg: #8b93a1;
+  --rail-active: #e6e8ec;
+  --topbar-bg: #161a22;
+  --sidebar-bg: #12151c;
+  --login-bg: #0a0c10;
+  --login-glow: rgba(122, 155, 191, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  color: var(--color-foreground);
+  background:
+    radial-gradient(900px 480px at 0% -5%, var(--login-glow) 0%, transparent 55%),
+    radial-gradient(700px 400px at 100% 0%, rgba(28, 31, 38, 0.04) 0%, transparent 50%),
+    var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body,
+html.dark body {
+  background:
+    radial-gradient(800px 420px at 0% -8%, var(--login-glow) 0%, transparent 50%),
+    var(--color-background);
+}
+
+@layer utilities {
+  .text-table {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
