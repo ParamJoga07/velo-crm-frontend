@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
@@ -9,6 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type ExportJob = {
   id: string;
@@ -31,27 +41,26 @@ export function ExportsPage() {
   const [stage, setStage] = useState('');
   const [source, setSource] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { page, limit, setPage, setLimit } = useTablePagination(25);
 
   const query = useQuery({
-    queryKey: ['exports'],
+    queryKey: ['exports', page, limit],
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
     queryFn: async () => {
-      const res = await apiFetch<{
-        data: ExportJob[];
-        meta: { total?: number };
-        error: null;
-      }>('/api/exports?limit=50', { accessToken });
-      if (Array.isArray(res)) {
-        return {
-          data: res as unknown as ExportJob[],
-          meta: { total: (res as unknown as ExportJob[]).length },
-        };
-      }
-      if (res && Array.isArray(res.data)) {
-        return { data: res.data, meta: res.meta ?? {} };
-      }
-      return { data: [] as ExportJob[], meta: {} };
+      const res = await apiFetch<ListEnvelope<ExportJob>>(
+        `/api/exports?page=${page}&limit=${limit}`,
+        { accessToken },
+      );
+      return normalizeListEnvelope(res);
     },
-    refetchInterval: 5000,
+    refetchInterval: (q) => {
+      const rows = q.state.data?.data ?? [];
+      const busy = rows.some((r) =>
+        ['PENDING', 'PROCESSING'].includes(r.status),
+      );
+      return busy ? 5000 : false;
+    },
   });
 
   const create = useMutation({
@@ -191,6 +200,15 @@ export function ExportsPage() {
           columns={columns}
           data={query.data?.data ?? []}
           emptyMessage="No export jobs yet"
+          pagination={{
+            page,
+            limit,
+            total: query.data?.meta.total ?? 0,
+            pageCount: query.data?.meta.pageCount,
+            onPageChange: setPage,
+            onLimitChange: setLimit,
+            isFetching: query.isFetching,
+          }}
         />
       )}
     </div>

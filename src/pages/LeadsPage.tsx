@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -11,6 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type LeadRow = {
   id: string;
@@ -42,29 +47,31 @@ export function LeadsPage() {
   const user = useAuthStore((s) => s.user);
   const [params, setParams] = useSearchParams();
   const smart = params.get('smart') ?? '';
-  const [q, setQ] = useState(params.get('q') ?? '');
+  const appliedQ = params.get('q') ?? '';
+  const [q, setQ] = useState(appliedQ);
+  const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
+
+  useEffect(() => {
+    resetPage();
+  }, [smart, appliedQ, resetPage]);
 
   const query = useQuery({
-    queryKey: ['leads', user?.id, smart, q],
-    refetchInterval: 20_000,
+    queryKey: ['leads', user?.id, smart, appliedQ, page, limit],
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    refetchInterval: page === 1 ? 60_000 : false,
     queryFn: async () => {
-      const sp = new URLSearchParams({ limit: '50' });
+      const sp = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
       if (smart) sp.set('smart', smart);
-      if (q.trim()) sp.set('q', q.trim());
-      const envelope = await apiFetch<{
-        data: LeadRow[];
-        meta: { cursor: string | null; hasMore: boolean; total?: number };
-        error: null;
-      }>(`/api/leads?${sp}`, { accessToken });
-      const rows = Array.isArray(
-        (envelope as unknown as { data: LeadRow[] }).data,
-      )
-        ? (envelope as unknown as { data: LeadRow[]; meta: { total?: number } })
-        : {
-            data: envelope as unknown as LeadRow[],
-            meta: {},
-          };
-      return rows;
+      if (appliedQ.trim()) sp.set('q', appliedQ.trim());
+      const envelope = await apiFetch<ListEnvelope<LeadRow>>(
+        `/api/leads?${sp}`,
+        { accessToken },
+      );
+      return normalizeListEnvelope(envelope);
     },
   });
 
@@ -283,6 +290,15 @@ export function LeadsPage() {
             columns={columns}
             data={query.data?.data ?? []}
             emptyMessage="No leads in this list."
+            pagination={{
+              page,
+              limit,
+              total,
+              pageCount: query.data?.meta.pageCount,
+              onPageChange: setPage,
+              onLimitChange: setLimit,
+              isFetching: query.isFetching,
+            }}
           />
         )}
       </div>

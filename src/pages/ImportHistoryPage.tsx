@@ -1,6 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -10,6 +15,11 @@ import { DataTable, TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { downloadWithAuth } from '@/lib/api-form';
 import { useAuthStore } from '@/stores/auth';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type ImportRow = {
   id: string;
@@ -47,30 +57,35 @@ export function ImportHistoryPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
+  const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
+
+  useEffect(() => {
+    resetPage();
+  }, [statusFilter, apiType, resetPage]);
 
   const query = useQuery({
-    queryKey: ['imports', apiType, statusFilter],
+    queryKey: ['imports', apiType, statusFilter, page, limit],
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
     queryFn: async () => {
-      const qs = new URLSearchParams();
+      const qs = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
       if (statusFilter) qs.set('status', statusFilter);
-      const res = await apiFetch<{
-        data: ImportRow[];
-        meta: { total?: number; hasMore?: boolean };
-        error: null;
-      }>(`/api/imports/${apiType}?${qs.toString()}`, { accessToken });
-
-      if (Array.isArray(res)) {
-        return {
-          data: res as unknown as ImportRow[],
-          meta: { total: (res as unknown as ImportRow[]).length },
-        };
-      }
-      if (res && Array.isArray(res.data)) {
-        return { data: res.data, meta: res.meta ?? { total: res.data.length } };
-      }
-      return { data: [] as ImportRow[], meta: { total: 0 } };
+      const res = await apiFetch<ListEnvelope<ImportRow>>(
+        `/api/imports/${apiType}?${qs.toString()}`,
+        { accessToken },
+      );
+      return normalizeListEnvelope(res);
     },
-    refetchInterval: 4000,
+    refetchInterval: (q) => {
+      const rows = q.state.data?.data ?? [];
+      const busy = rows.some((r) =>
+        ['PROCESSING', 'PARSING', 'PENDING'].includes(r.status),
+      );
+      return busy ? 4000 : false;
+    },
   });
 
   const rerun = useMutation({
@@ -269,7 +284,20 @@ export function ImportHistoryPage() {
       {query.isLoading ? (
         <TableSkeleton />
       ) : (
-        <DataTable columns={columns} data={rows} emptyMessage="No imports yet" />
+        <DataTable
+          columns={columns}
+          data={rows}
+          emptyMessage="No imports yet"
+          pagination={{
+            page,
+            limit,
+            total,
+            pageCount: query.data?.meta.pageCount,
+            onPageChange: setPage,
+            onLimitChange: setLimit,
+            isFetching: query.isFetching,
+          }}
+        />
       )}
     </div>
   );

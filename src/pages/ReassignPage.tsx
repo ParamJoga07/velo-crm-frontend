@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +15,11 @@ import { DataTable, TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type LeadOption = {
   id: string;
@@ -29,6 +39,7 @@ type Options = {
   }[];
   teams: { id: string; name: string }[];
   leads: LeadOption[];
+  meta?: ListEnvelope<LeadOption>['meta'];
 };
 
 type HistoryRow = {
@@ -67,16 +78,45 @@ export function ReassignPage() {
   const [note, setNote] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [leadQ, setLeadQ] = useState('');
+  const [appliedLeadQ, setAppliedLeadQ] = useState('');
+  const leadsPager = useTablePagination(25);
+  const historyPager = useTablePagination(25);
+
+  useEffect(() => {
+    leadsPager.resetPage();
+  }, [appliedLeadQ, leadsPager.resetPage]);
 
   const options = useQuery({
-    queryKey: ['reassign-options'],
-    queryFn: () => apiFetch<Options>('/api/reassign/options', { accessToken }),
+    queryKey: [
+      'reassign-options',
+      leadsPager.page,
+      leadsPager.limit,
+      appliedLeadQ,
+    ],
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sp = new URLSearchParams({
+        page: String(leadsPager.page),
+        limit: String(leadsPager.limit),
+      });
+      if (appliedLeadQ.trim()) sp.set('q', appliedLeadQ.trim());
+      return apiFetch<Options>(`/api/reassign/options?${sp}`, { accessToken });
+    },
   });
 
   const history = useQuery({
-    queryKey: ['reassign-history'],
-    queryFn: () =>
-      apiFetch<HistoryRow[]>('/api/reassign/history?limit=40', { accessToken }),
+    queryKey: ['reassign-history', historyPager.page, historyPager.limit],
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await apiFetch<ListEnvelope<HistoryRow>>(
+        `/api/reassign/history?page=${historyPager.page}&limit=${historyPager.limit}`,
+        { accessToken },
+      );
+      return normalizeListEnvelope(res);
+    },
   });
 
   const mutate = useMutation({
@@ -274,19 +314,37 @@ export function ReassignPage() {
       </section>
 
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-navy">Leads in scope</h2>
-          <button
-            type="button"
-            className="text-xs font-medium text-primary hover:underline"
-            onClick={() =>
-              setSelected(
-                selected.size === allIds.length ? new Set() : new Set(allIds),
-              )
-            }
-          >
-            {selected.size === allIds.length ? 'Clear all' : 'Select all'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="h-8 w-full sm:w-48"
+              placeholder="Search leads…"
+              value={leadQ}
+              onChange={(e) => setLeadQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setAppliedLeadQ(leadQ.trim());
+              }}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setAppliedLeadQ(leadQ.trim())}
+            >
+              Search
+            </Button>
+            <button
+              type="button"
+              className="text-xs font-medium text-primary hover:underline"
+              onClick={() =>
+                setSelected(
+                  selected.size === allIds.length ? new Set() : new Set(allIds),
+                )
+              }
+            >
+              {selected.size === allIds.length ? 'Clear all' : 'Select page'}
+            </button>
+          </div>
         </div>
         {options.isLoading ? (
           <TableSkeleton rows={5} />
@@ -295,12 +353,21 @@ export function ReassignPage() {
             columns={columns}
             data={leads}
             emptyMessage="No leads available."
-            title={`${leads.length} lead(s)`}
+            title={`${options.data?.meta?.total ?? leads.length} lead(s)`}
             description={
               selected.size
                 ? `${selected.size} selected for reassignment`
                 : 'Select leads, then choose an assignee above'
             }
+            pagination={{
+              page: leadsPager.page,
+              limit: leadsPager.limit,
+              total: options.data?.meta?.total ?? leads.length,
+              pageCount: options.data?.meta?.pageCount,
+              onPageChange: leadsPager.setPage,
+              onLimitChange: leadsPager.setLimit,
+              isFetching: options.isFetching,
+            }}
           />
         )}
       </section>
@@ -312,8 +379,17 @@ export function ReassignPage() {
         ) : (
           <DataTable
             columns={historyColumns}
-            data={history.data ?? []}
+            data={history.data?.data ?? []}
             emptyMessage="No reassignments yet."
+            pagination={{
+              page: historyPager.page,
+              limit: historyPager.limit,
+              total: history.data?.meta.total ?? 0,
+              pageCount: history.data?.meta.pageCount,
+              onPageChange: historyPager.setPage,
+              onLimitChange: historyPager.setLimit,
+              isFetching: history.isFetching,
+            }}
           />
         )}
       </section>

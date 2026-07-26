@@ -13,6 +13,7 @@ export type CreateExportJobInput = z.infer<typeof CreateExportJobSchema>;
 
 export const ExportListQuerySchema = z.object({
   cursor: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 

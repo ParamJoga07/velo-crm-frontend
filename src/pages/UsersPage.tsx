@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable, TableSkeleton } from '@/components/ui/data-table';
@@ -11,6 +11,11 @@ import { Label } from '@/components/ui/form';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type UserRow = {
   id: string;
@@ -94,31 +99,39 @@ export function UsersPage() {
     existingUserId: '',
   });
 
+  const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
+
+  useEffect(() => {
+    resetPage();
+  }, [selectedTeamId, resetPage]);
+
   const usersQuery = useQuery({
-    queryKey: ['users', selectedTeamId],
+    queryKey: ['users', selectedTeamId, page, limit],
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '100' });
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
       if (selectedTeamId) params.set('teamId', selectedTeamId);
-      const res = await apiFetch<{ data: UserRow[]; meta: { total?: number } }>(
+      const res = await apiFetch<ListEnvelope<UserRow>>(
         `/api/users?${params}`,
         { accessToken },
       );
-      return Array.isArray((res as { data?: UserRow[] }).data)
-        ? (res as { data: UserRow[]; meta: { total?: number } })
-        : { data: res as unknown as UserRow[], meta: {} };
+      return normalizeListEnvelope(res);
     },
   });
 
   const allUsersQuery = useQuery({
-    queryKey: ['users', 'all'],
+    queryKey: ['users', 'all-dropdown'],
+    staleTime: 120_000,
     queryFn: async () => {
-      const res = await apiFetch<{ data: UserRow[]; meta: { total?: number } }>(
-        '/api/users?limit=100',
+      const res = await apiFetch<ListEnvelope<UserRow>>(
+        '/api/users?limit=100&page=1',
         { accessToken },
       );
-      return Array.isArray((res as { data?: UserRow[] }).data)
-        ? (res as { data: UserRow[]; meta: { total?: number } })
-        : { data: res as unknown as UserRow[], meta: {} };
+      return normalizeListEnvelope(res);
     },
   });
 
@@ -777,6 +790,15 @@ export function UsersPage() {
                 columns={columns}
                 data={usersQuery.data?.data ?? []}
                 emptyMessage="No users found"
+                pagination={{
+                  page,
+                  limit,
+                  total: usersQuery.data?.meta.total ?? 0,
+                  pageCount: usersQuery.data?.meta.pageCount,
+                  onPageChange: setPage,
+                  onLimitChange: setLimit,
+                  isFetching: usersQuery.isFetching,
+                }}
               />
             )}
           </div>

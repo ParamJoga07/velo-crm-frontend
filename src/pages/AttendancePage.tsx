@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable, TableSkeleton, tableShellClass, tableHeadClass, tableRowClass, tableCellClass } from '@/components/ui/data-table';
@@ -11,6 +11,11 @@ import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
 import type { WeekAvailability, WeekDay } from '@velo/shared';
+import {
+  normalizeListEnvelope,
+  useTablePagination,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type AttendanceRow = {
   id: string;
@@ -74,6 +79,12 @@ export function AttendancePage() {
   const [to, setTo] = useState('');
   const [status, setStatus] = useState('');
   const teamId = searchParams.get('teamId') ?? '';
+  const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
+
+  useEffect(() => {
+    resetPage();
+  }, [from, to, status, teamId, resetPage]);
+
   const qc = useQueryClient();
 
   const teamsQuery = useQuery({
@@ -123,21 +134,24 @@ export function AttendancePage() {
   });
 
   const query = useQuery({
-    queryKey: ['attendance-records', from, to, status, teamId],
+    queryKey: ['attendance-records', from, to, status, teamId, page, limit],
     enabled: tab === 'logs',
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '50' });
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
       if (from) params.set('from', from);
       if (to) params.set('to', to);
       if (status) params.set('status', status);
       if (teamId) params.set('teamId', teamId);
-      const res = await apiFetch<{
-        data: AttendanceRow[];
-        meta: { total?: number };
-      }>(`/api/attendance/records?${params}`, { accessToken });
-      return Array.isArray((res as { data?: AttendanceRow[] }).data)
-        ? (res as { data: AttendanceRow[]; meta: { total?: number } })
-        : { data: res as unknown as AttendanceRow[], meta: {} };
+      const res = await apiFetch<ListEnvelope<AttendanceRow>>(
+        `/api/attendance/records?${params}`,
+        { accessToken },
+      );
+      return normalizeListEnvelope(res);
     },
   });
 
@@ -280,14 +294,14 @@ export function AttendancePage() {
               </div>
             </div>
 
-            <div className="overflow-auto">
+            <div className="max-h-[min(58vh,calc(100dvh-15rem))] overflow-auto md:max-h-[calc(100dvh-14rem)]">
               <table className="min-w-full border-collapse text-table">
-                <thead>
+                <thead className="sticky top-0 z-20">
                   <tr className={tableHeadClass}>
                     <th
                       className={cn(
                         tableCellClass,
-                        'sticky left-0 z-20 min-w-[140px] border-r border-border bg-surface-muted sm:min-w-[200px]',
+                        'sticky left-0 z-30 min-w-[140px] border-r border-border bg-surface-muted sm:min-w-[200px]',
                       )}
                     >
                       Name
@@ -424,6 +438,15 @@ export function AttendancePage() {
               columns={columns}
               data={query.data?.data ?? []}
               emptyMessage="No attendance records yet. Records appear after login."
+              pagination={{
+                page,
+                limit,
+                total: query.data?.meta.total ?? 0,
+                pageCount: query.data?.meta.pageCount,
+                onPageChange: setPage,
+                onLimitChange: setLimit,
+                isFetching: query.isFetching,
+              }}
             />
           )}
         </>

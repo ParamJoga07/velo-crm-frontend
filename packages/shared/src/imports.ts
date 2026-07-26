@@ -33,6 +33,7 @@ export type CreateImportJobInput = z.infer<typeof CreateImportJobSchema>;
 
 export const ImportListQuerySchema = z.object({
   cursor: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   status: z.string().optional(),
   campaignId: z.string().uuid().optional(),
