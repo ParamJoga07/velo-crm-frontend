@@ -231,10 +231,10 @@ export function AttendancePage() {
           </>
         ) : null}
         {isManager ? (
-          <div className="ml-auto">
+          <div className="w-full sm:ml-auto sm:w-auto">
             <Label className="sr-only">Team</Label>
             <select
-              className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+              className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm sm:w-auto"
               value={teamId}
               onChange={(e) => {
                 const next = new URLSearchParams(searchParams);
@@ -287,7 +287,7 @@ export function AttendancePage() {
                     <th
                       className={cn(
                         tableCellClass,
-                        'sticky left-0 z-20 min-w-[200px] border-r border-border bg-surface-muted',
+                        'sticky left-0 z-20 min-w-[140px] border-r border-border bg-surface-muted sm:min-w-[200px]',
                       )}
                     >
                       Name

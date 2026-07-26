@@ -280,9 +280,10 @@ export function LeadDetailPage() {
             {lead.noFutureFlag ? (
               <Badge tone="warning">No future</Badge>
             ) : null}
-            <Button size="sm" onClick={() => setFollowupOpen(true)}>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => setFollowupOpen(true)}>
               <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
-              Schedule follow-up
+              <span className="sm:hidden">Follow-up</span>
+              <span className="hidden sm:inline">Schedule follow-up</span>
             </Button>
           </div>
         }
@@ -301,7 +302,7 @@ export function LeadDetailPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr]">
         <aside className="space-y-3">
           <section className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
             <Label>Stage &amp; status</Label>
@@ -392,7 +393,7 @@ export function LeadDetailPage() {
         </aside>
 
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface-raised p-1 shadow-panel">
+          <div className="flex gap-1 overflow-x-auto rounded-lg border border-border bg-surface-raised p-1 shadow-panel">
             {(
               [
                 { id: 'note', label: 'Note', icon: StickyNote },
@@ -409,7 +410,7 @@ export function LeadDetailPage() {
                   if (t.id === 'followup') setFollowupOpen(true);
                 }}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors sm:py-1.5',
                   tab === t.id
                     ? 'bg-primary text-primary-foreground'
                     : 'text-navy/70 hover:bg-surface-muted',
@@ -456,11 +457,11 @@ export function LeadDetailPage() {
                   key={a.id}
                   className="rounded-md border border-border/70 bg-surface px-3 py-2 text-sm"
                 >
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                  <div className="flex flex-col gap-1 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                     <span className="font-semibold uppercase tracking-wide">
-                      {a.type.replaceAll('_', ' ')}
+                      {a.type.replace(/_/g, ' ')}
                     </span>
-                    <span>{new Date(a.createdAt).toLocaleString()}</span>
+                    <span className="shrink-0">{new Date(a.createdAt).toLocaleString()}</span>
                   </div>
                   <p className="mt-1 text-navy">{activityText(a)}</p>
                   {a.user ? (
@@ -481,8 +482,8 @@ export function LeadDetailPage() {
       </div>
 
       {followupOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-surface-raised p-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-xl border border-border bg-surface-raised p-4 shadow-xl sm:rounded-lg">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-navy">Followup</h2>
               <button

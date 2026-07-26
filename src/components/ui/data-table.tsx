@@ -55,7 +55,7 @@ export function DataTable<T>({
       ) : null}
 
       <div className="overflow-auto">
-        <table className="w-full min-w-[640px] border-collapse text-table">
+        <table className="w-full min-w-[560px] border-collapse text-table sm:min-w-[640px]">
           <thead className="sticky top-0 z-10">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className={tableHeadClass}>

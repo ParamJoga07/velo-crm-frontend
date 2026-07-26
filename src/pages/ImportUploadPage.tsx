@@ -189,7 +189,7 @@ export function ImportUploadPage() {
         ← Back to history
       </Link>
 
-      <div className="space-y-6 rounded-md border border-border bg-surface-raised p-5 shadow-crm">
+      <div className="space-y-6 rounded-md border border-border bg-surface-raised p-3 shadow-crm sm:p-5">
         <FormSection title="Upload + config">
           <div className="md:col-span-2">
             <Label>File</Label>

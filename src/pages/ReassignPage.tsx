@@ -157,7 +157,7 @@ export function ReassignPage() {
           return (
             <Badge tone={stageTone(stage)}>
               {LEAD_STAGE_LABELS[stage as LeadStage] ??
-                stage.replaceAll('_', ' ')}
+                stage.replace(/_/g, ' ')}
             </Badge>
           );
         },

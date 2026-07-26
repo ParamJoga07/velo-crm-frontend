@@ -144,7 +144,7 @@ export function LeadsPage() {
           return (
             <Badge tone={tone}>
               {LEAD_STAGE_LABELS[stage as LeadStage] ??
-                stage.replaceAll('_', ' ')}
+                stage.replace(/_/g, ' ')}
             </Badge>
           );
         },
@@ -180,13 +180,13 @@ export function LeadsPage() {
   const total = query.data?.meta?.total ?? query.data?.data?.length ?? 0;
 
   return (
-    <div className="flex gap-4">
-      <aside className="hidden w-56 shrink-0 space-y-3 lg:block">
+    <div className="flex flex-col gap-4 lg:flex-row">
+      <aside className="w-full shrink-0 lg:w-56">
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Smart lists
           </p>
-          <nav className="flex flex-col gap-0.5">
+          <nav className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
             {SMART_LISTS.map((item) => {
               if (item.id === 'reassigned_to_me' && user?.role !== 'USER') {
                 return null;
@@ -203,10 +203,10 @@ export function LeadsPage() {
                     setParams(next);
                   }}
                   className={cn(
-                    'rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors',
+                    'shrink-0 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors',
                     active
                       ? 'bg-primary-muted font-semibold text-primary-dark'
-                      : 'text-navy/80 hover:bg-surface-muted',
+                      : 'border border-border text-navy/80 hover:bg-surface-muted lg:border-0',
                   )}
                 >
                   {item.label}
@@ -238,9 +238,9 @@ export function LeadsPage() {
           }
         />
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Input
-            className="max-w-xs"
+            className="w-full sm:max-w-xs"
             placeholder="Quick find name / phone / email"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -265,28 +265,6 @@ export function LeadsPage() {
           >
             Search
           </Button>
-          <div className="flex flex-wrap gap-1 lg:hidden">
-            {SMART_LISTS.map((item) => (
-              <button
-                key={item.id || 'all-m'}
-                type="button"
-                onClick={() => {
-                  const next = new URLSearchParams(params);
-                  if (item.id) next.set('smart', item.id);
-                  else next.delete('smart');
-                  setParams(next);
-                }}
-                className={cn(
-                  'rounded-full border px-2.5 py-1 text-[11px]',
-                  smart === item.id
-                    ? 'border-primary bg-primary-muted text-primary-dark'
-                    : 'border-border text-muted-foreground',
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {latestAssignment ? (

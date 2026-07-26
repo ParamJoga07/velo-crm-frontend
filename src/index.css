@@ -127,3 +127,91 @@ html.dark body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Login screen atmosphere + motion */
+.login-atmosphere {
+  background:
+    radial-gradient(900px 520px at 8% 12%, var(--login-glow), transparent 58%),
+    radial-gradient(
+      720px 420px at 92% 88%,
+      color-mix(in srgb, var(--color-primary) 14%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-surface-muted) 80%, transparent) 0%,
+      transparent 42%
+    ),
+    var(--color-background);
+}
+
+.dark .login-atmosphere {
+  background:
+    radial-gradient(820px 480px at 10% 8%, var(--login-glow), transparent 55%),
+    radial-gradient(
+      640px 380px at 95% 90%,
+      color-mix(in srgb, var(--color-primary) 12%, transparent),
+      transparent 50%
+    ),
+    var(--color-background);
+}
+
+.login-brand-plane {
+  background:
+    linear-gradient(160deg, #2a303c 0%, #1c1f26 42%, #12151c 100%);
+}
+
+.login-grid-mask {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, white 8%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, white 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, black 20%, transparent 95%);
+}
+
+@keyframes login-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-fade-up {
+  animation: login-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-delay-1 {
+  animation-delay: 80ms;
+}
+.login-delay-2 {
+  animation-delay: 160ms;
+}
+.login-delay-3 {
+  animation-delay: 240ms;
+}
+.login-delay-4 {
+  animation-delay: 320ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-fade-up {
+    animation: none;
+  }
+}
+
+/* iOS home indicator padding for mobile bottom nav */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

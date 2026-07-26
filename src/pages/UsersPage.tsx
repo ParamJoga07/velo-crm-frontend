@@ -601,14 +601,14 @@ export function UsersPage() {
               No teams yet. Create one to get started.
             </p>
           ) : (
-            <div className="space-y-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
               {(teamsQuery.data ?? []).map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedTeamId(t.id)}
                   className={cn(
-                    'w-full rounded-md border px-3 py-2.5 text-left transition-colors',
+                    'min-w-[200px] shrink-0 rounded-md border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full',
                     selectedTeamId === t.id
                       ? 'border-primary bg-primary-muted'
                       : 'border-border bg-surface-raised hover:bg-surface-muted',

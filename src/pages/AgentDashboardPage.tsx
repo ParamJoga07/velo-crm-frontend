@@ -210,11 +210,11 @@ export function AgentDashboardPage() {
           ) : null}
 
           <div className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
-            <div className="mb-2 flex gap-3 border-b border-border text-xs font-semibold">
-              <span className="border-b-2 border-primary pb-2 text-primary">
+            <div className="mb-2 flex gap-3 overflow-x-auto border-b border-border text-xs font-semibold">
+              <span className="shrink-0 border-b-2 border-primary pb-2 text-primary">
                 Today&apos;s Agenda
               </span>
-              <span className="pb-2 text-muted-foreground">
+              <span className="shrink-0 pb-2 text-muted-foreground">
                 Open Tasks ({query.data?.openTasks.length ?? 0})
               </span>
             </div>
