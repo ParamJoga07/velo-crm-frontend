@@ -36,6 +36,9 @@ export default {
           DEFAULT: 'var(--color-muted)',
           foreground: 'var(--color-muted-foreground)',
         },
+        'table-border': 'var(--color-table-border)',
+        'table-header': 'var(--color-table-header)',
+        'table-row-hover': 'var(--color-table-row-hover)',
       },
       fontFamily: {
         sans: ['"IBM Plex Sans"', 'Segoe UI', 'sans-serif'],
@@ -50,8 +53,8 @@ export default {
         topbar: '48px',
       },
       boxShadow: {
-        panel: '0 1px 0 color-mix(in srgb, var(--color-navy) 6%, transparent)',
-        crm: '0 1px 2px color-mix(in srgb, var(--color-navy) 6%, transparent), 0 4px 12px color-mix(in srgb, var(--color-navy) 4%, transparent)',
+        panel: 'var(--shadow-panel)',
+        crm: 'var(--shadow-crm)',
       },
     },
   },

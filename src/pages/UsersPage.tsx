@@ -479,7 +479,7 @@ export function UsersPage() {
       ) : null}
 
       {showTeamForm ? (
-        <section className="rounded-md border border-border bg-surface-raised p-4 shadow-panel">
+        <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
           <h2 className="text-sm font-semibold text-navy">Create team</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div>
@@ -517,7 +517,7 @@ export function UsersPage() {
       ) : null}
 
       {showUserForm ? (
-        <section className="rounded-md border border-border bg-surface-raised p-4 shadow-panel">
+        <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
           <h2 className="text-sm font-semibold text-navy">Create user</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -624,7 +624,7 @@ export function UsersPage() {
                     'min-w-[200px] shrink-0 rounded-md border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full',
                     selectedTeamId === t.id
                       ? 'border-primary bg-primary-muted'
-                      : 'border-border bg-surface-raised hover:bg-surface-muted',
+                      : 'border-border bg-surface-raised hover:bg-surface-muted dark:border-[#0e1117]',
                   )}
                 >
                   <div className="font-semibold text-navy">{t.name}</div>
@@ -641,7 +641,7 @@ export function UsersPage() {
 
         <div className="space-y-4 min-w-0">
           {selectedTeamId && teamDetail.data ? (
-            <section className="rounded-md border border-border bg-surface-raised p-4 shadow-panel">
+            <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h2 className="text-base font-semibold text-navy">

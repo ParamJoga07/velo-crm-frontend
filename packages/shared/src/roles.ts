@@ -13,6 +13,9 @@ export const LeadStageSchema = z.enum([
 ]);
 export type LeadStage = z.infer<typeof LeadStageSchema>;
 
+export const LeadPrioritySchema = z.enum(['HOT', 'WARM', 'COLD']);
+export type LeadPriority = z.infer<typeof LeadPrioritySchema>;
+
 export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   INCOMING: 'Incoming',
   PROSPECT: 'Prospect',
@@ -21,6 +24,66 @@ export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   BOOKED: 'Booked',
   LOST: 'Lost',
 };
+
+export const LEAD_PRIORITY_LABELS: Record<LeadPriority, string> = {
+  HOT: 'Hot',
+  WARM: 'Warm',
+  COLD: 'Cold',
+};
+
+export const ACTIVITY_TYPES = [
+  'NOTE',
+  'CALL',
+  'WHATSAPP',
+  'MEETING',
+  'GOOGLE_MEET',
+  'EMAIL',
+  'SITE_VISIT',
+  'REMINDER',
+  'STAGE_CHANGE',
+  'FOLLOWUP_SCHEDULED',
+  'TASK_COMPLETED',
+  'LEAD_OPENED',
+  'VIEW_NO_ACTION',
+] as const;
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+
+export const CreateLeadSchema = z.object({
+  name: z.string().min(1).max(200),
+  phone: z.string().min(7).max(20),
+  altPhone: z.string().max(20).optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  city: z.string().max(120).optional().nullable(),
+  requirement: z.string().max(500).optional().nullable(),
+  configuration: z.string().max(120).optional().nullable(),
+  remarks: z.string().max(2000).optional().nullable(),
+  source: z.string().min(1).max(120).default('Manual'),
+  priority: LeadPrioritySchema.optional().default('WARM'),
+  stage: LeadStageSchema.optional().default('INCOMING'),
+  budgetMin: z.number().int().optional().nullable(),
+  budgetMax: z.number().int().optional().nullable(),
+  campaignId: z.string().uuid().optional().nullable(),
+  teamId: z.string().uuid().optional().nullable(),
+  assignedToId: z.string().uuid().optional().nullable(),
+});
+export type CreateLeadInput = z.infer<typeof CreateLeadSchema>;
+
+export const LogActivitySchema = z.object({
+  type: z.enum([
+    'NOTE',
+    'CALL',
+    'WHATSAPP',
+    'MEETING',
+    'GOOGLE_MEET',
+    'EMAIL',
+    'SITE_VISIT',
+    'REMINDER',
+  ]),
+  notes: z.string().max(4000).optional().nullable(),
+  outcome: z.string().max(200).optional().nullable(),
+  durationSec: z.number().int().min(0).optional().nullable(),
+});
+export type LogActivityInput = z.infer<typeof LogActivitySchema>;
 
 export const WEEK_DAYS = [
   'monday',

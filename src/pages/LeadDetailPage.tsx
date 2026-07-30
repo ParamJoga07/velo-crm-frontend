@@ -1,13 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   CalendarPlus,
+  Mail,
+  MapPin,
   MessageSquare,
   Phone,
   StickyNote,
+  Trash2,
+  Users,
+  Video,
 } from 'lucide-react';
-import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
+import {
+  LEAD_PRIORITY_LABELS,
+  LEAD_STAGE_LABELS,
+  type LeadPriority,
+  type LeadStage,
+} from '@velo/shared';
 import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +29,7 @@ import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
 
 const STAGES = Object.keys(LEAD_STAGE_LABELS) as LeadStage[];
+const PRIORITIES = Object.keys(LEAD_PRIORITY_LABELS) as LeadPriority[];
 
 type LeadDetail = {
   lead: {
@@ -27,6 +38,11 @@ type LeadDetail = {
     phone: string;
     altPhone: string | null;
     email: string | null;
+    city: string | null;
+    requirement: string | null;
+    configuration: string | null;
+    remarks: string | null;
+    priority: string;
     stage: string;
     source: string;
     score: number;
@@ -60,11 +76,30 @@ type LeadDetail = {
   };
 };
 
-type Tab = 'note' | 'followup' | 'call' | 'whatsapp';
+type Tab =
+  | 'note'
+  | 'followup'
+  | 'call'
+  | 'whatsapp'
+  | 'meeting'
+  | 'email'
+  | 'site_visit';
+
+const ACTIVITY_TAB_TYPE: Record<
+  Exclude<Tab, 'note' | 'followup'>,
+  'CALL' | 'WHATSAPP' | 'MEETING' | 'EMAIL' | 'SITE_VISIT'
+> = {
+  call: 'CALL',
+  whatsapp: 'WHATSAPP',
+  meeting: 'MEETING',
+  email: 'EMAIL',
+  site_visit: 'SITE_VISIT',
+};
 
 function activityText(a: LeadDetail['activities'][0]) {
   const p = a.payload ?? {};
   if (typeof p.message === 'string' && p.message) return p.message;
+  if (typeof p.notes === 'string' && p.notes) return p.notes;
   if (a.type === 'NOTE') return String(p.text ?? '');
   if (a.type === 'STAGE_CHANGE')
     return `Lead stage was changed from ${String(p.from ?? '')} to ${String(p.to ?? '')}${
@@ -74,20 +109,29 @@ function activityText(a: LeadDetail['activities'][0]) {
     return `Follow-up scheduled: ${String(p.title ?? 'Follow-up')} at ${
       p.scheduledAt ? new Date(String(p.scheduledAt)).toLocaleString() : ''
     }`;
-  if (a.type === 'TASK_COMPLETED')
-    return `Completed: ${String(p.title ?? 'Task')}`;
+  if (a.type === 'TASK_COMPLETED') return `Completed: ${String(p.title ?? 'Task')}`;
   if (a.type === 'LEAD_OPENED') return 'Lead was opened.';
   if (a.type === 'VIEW_NO_ACTION')
     return 'Opened without saving — marked as No Future Activity.';
   return a.type;
 }
 
+function priorityTone(p: string): 'danger' | 'warning' | 'neutral' {
+  if (p === 'HOT') return 'danger';
+  if (p === 'WARM') return 'warning';
+  return 'neutral';
+}
+
 export function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.user?.role);
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('note');
   const [note, setNote] = useState('');
+  const [activityNotes, setActivityNotes] = useState('');
+  const [activityOutcome, setActivityOutcome] = useState('');
   const [lostReason, setLostReason] = useState('');
   const [followupOpen, setFollowupOpen] = useState(false);
   const [followup, setFollowup] = useState({
@@ -105,8 +149,7 @@ export function LeadDetailPage() {
     queryKey: ['lead', id],
     enabled: !!id,
     refetchInterval: 15_000,
-    queryFn: () =>
-      apiFetch<LeadDetail>(`/api/leads/${id}`, { accessToken }),
+    queryFn: () => apiFetch<LeadDetail>(`/api/leads/${id}`, { accessToken }),
   });
 
   useEffect(() => {
@@ -160,6 +203,27 @@ export function LeadDetailPage() {
     onError: (e: Error) => setError(e.message),
   });
 
+  const logActivity = useMutation({
+    mutationFn: (type: string) =>
+      apiFetch(`/api/leads/${id}/activities`, {
+        method: 'POST',
+        accessToken,
+        body: JSON.stringify({
+          type,
+          notes: activityNotes.trim() || null,
+          outcome: activityOutcome.trim() || null,
+        }),
+      }),
+    onSuccess: () => {
+      markSaved();
+      setActivityNotes('');
+      setActivityOutcome('');
+      setError(null);
+      invalidate();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const updateStage = useMutation({
     mutationFn: (stage: string) =>
       apiFetch(`/api/leads/${id}/stage`, {
@@ -174,6 +238,30 @@ export function LeadDetailPage() {
       markSaved();
       setError(null);
       invalidate();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const updateField = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      apiFetch(`/api/leads/${id}`, {
+        method: 'PATCH',
+        accessToken,
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      markSaved();
+      invalidate();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const removeLead = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/leads/${id}`, { method: 'DELETE', accessToken }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['leads'] });
+      navigate('/leads');
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -256,6 +344,12 @@ export function LeadDetailPage() {
     saveNote.mutate();
   };
 
+  const onActivitySubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (tab === 'note' || tab === 'followup') return;
+    logActivity.mutate(ACTIVITY_TAB_TYPE[tab]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground">
@@ -273,18 +367,34 @@ export function LeadDetailPage() {
         }`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={priorityTone(lead.priority)}>
+              {LEAD_PRIORITY_LABELS[lead.priority as LeadPriority] ?? lead.priority}
+            </Badge>
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface font-mono text-sm font-semibold text-navy">
               {lead.score}
             </span>
             <Badge tone="new">{query.data?.meta.openTasks ?? 0} tasks</Badge>
-            {lead.noFutureFlag ? (
-              <Badge tone="warning">No future</Badge>
-            ) : null}
+            {lead.noFutureFlag ? <Badge tone="warning">No future</Badge> : null}
             <Button size="sm" className="w-full sm:w-auto" onClick={() => setFollowupOpen(true)}>
               <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
-              <span className="sm:hidden">Follow-up</span>
-              <span className="hidden sm:inline">Schedule follow-up</span>
+              Follow-up
             </Button>
+            {role !== 'USER' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-danger"
+                disabled={removeLead.isPending}
+                onClick={() => {
+                  if (window.confirm('Delete this lead permanently?')) {
+                    removeLead.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -317,6 +427,18 @@ export function LeadDetailPage() {
                 </option>
               ))}
             </select>
+            <Label className="mt-3 block">Priority</Label>
+            <select
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              value={lead.priority}
+              onChange={(e) => updateField.mutate({ priority: e.target.value })}
+            >
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {LEAD_PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </select>
             {lead.stage === 'LOST' || updateStage.variables === 'LOST' ? (
               <Input
                 className="mt-2"
@@ -330,17 +452,15 @@ export function LeadDetailPage() {
                 }}
               />
             ) : null}
-            {lead.lostReason ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Reason: {lead.lostReason}
-              </p>
-            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-surface-raised p-3 text-sm shadow-panel">
             <dl className="space-y-2">
               <Row label="Received on" value={new Date(lead.createdAt).toLocaleString()} />
               <Row label="Lead age" value={`${query.data?.meta.ageDays ?? 0} days`} />
+              <Row label="City" value={lead.city || '—'} />
+              <Row label="Requirement" value={lead.requirement || '—'} />
+              <Row label="Configuration" value={lead.configuration || '—'} />
               <Row label="Source / tags" value={lead.source} />
               <Row label="Owner" value={lead.assignedTo?.name ?? 'Unassigned'} />
               <Row label="Team" value={lead.team?.name ?? '—'} />
@@ -354,6 +474,11 @@ export function LeadDetailPage() {
                 }
               />
             </dl>
+            {lead.remarks ? (
+              <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                {lead.remarks}
+              </p>
+            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
@@ -400,6 +525,9 @@ export function LeadDetailPage() {
                 { id: 'followup', label: 'Followup', icon: CalendarPlus },
                 { id: 'call', label: 'Call', icon: Phone },
                 { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+                { id: 'meeting', label: 'Meeting', icon: Users },
+                { id: 'email', label: 'Email', icon: Mail },
+                { id: 'site_visit', label: 'Site visit', icon: MapPin },
               ] as const
             ).map((t) => (
               <button
@@ -441,13 +569,35 @@ export function LeadDetailPage() {
             </form>
           ) : null}
 
-          {(tab === 'call' || tab === 'whatsapp') && (
-            <div className="rounded-lg border border-dashed border-border bg-surface-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
-              {tab === 'call'
-                ? 'Telephony integration is not required for this rollout. Use notes and follow-ups to track outreach.'
-                : 'WhatsApp messaging will plug in later. Schedule a follow-up or leave a note for now.'}
-            </div>
-          )}
+          {tab !== 'note' && tab !== 'followup' ? (
+            <form
+              onSubmit={onActivitySubmit}
+              className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-navy">
+                {tab === 'call' ? <Phone className="h-4 w-4" /> : null}
+                {tab === 'meeting' ? <Video className="h-4 w-4" /> : null}
+                Log {ACTIVITY_TAB_TYPE[tab].replace(/_/g, ' ').toLowerCase()}
+              </div>
+              <Input
+                className="mb-2"
+                placeholder="Outcome (e.g. Connected / No answer / Interested)"
+                value={activityOutcome}
+                onChange={(e) => setActivityOutcome(e.target.value)}
+              />
+              <textarea
+                className="min-h-[100px] w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+                placeholder="Notes from this activity"
+                value={activityNotes}
+                onChange={(e) => setActivityNotes(e.target.value)}
+              />
+              <div className="mt-2 flex justify-end">
+                <Button type="submit" disabled={logActivity.isPending}>
+                  {logActivity.isPending ? 'Saving…' : 'Log activity'}
+                </Button>
+              </div>
+            </form>
+          ) : null}
 
           <section className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
             <h3 className="mb-2 text-sm font-semibold text-navy">Activity log</h3>
@@ -461,7 +611,9 @@ export function LeadDetailPage() {
                     <span className="font-semibold uppercase tracking-wide">
                       {a.type.replace(/_/g, ' ')}
                     </span>
-                    <span className="shrink-0">{new Date(a.createdAt).toLocaleString()}</span>
+                    <span className="shrink-0">
+                      {new Date(a.createdAt).toLocaleString()}
+                    </span>
                   </div>
                   <p className="mt-1 text-navy">{activityText(a)}</p>
                   {a.user ? (
@@ -473,7 +625,7 @@ export function LeadDetailPage() {
               ))}
               {!query.data?.activities.length ? (
                 <li className="py-8 text-center text-sm text-muted-foreground">
-                  No history yet — add a note or schedule a follow-up.
+                  No history yet — add a note or log an activity.
                 </li>
               ) : null}
             </ul>
@@ -586,7 +738,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-3">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium text-navy">{value}</dd>
+      <dd className="max-w-[60%] text-right font-medium text-navy">{value}</dd>
     </div>
   );
 }

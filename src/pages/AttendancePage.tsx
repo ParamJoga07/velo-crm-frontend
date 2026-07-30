@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable, TableSkeleton, tableShellClass, tableHeadClass, tableRowClass, tableCellClass } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { apiFetch } from '@/lib/api';
@@ -78,6 +79,7 @@ export function AttendancePage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [status, setStatus] = useState('');
+  const [clockMsg, setClockMsg] = useState<string | null>(null);
   const teamId = searchParams.get('teamId') ?? '';
   const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
 
@@ -123,6 +125,23 @@ export function AttendancePage() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['attendance-availability'] });
+    },
+  });
+
+  const clock = useMutation({
+    mutationFn: (action: 'clock-in' | 'clock-out') =>
+      apiFetch<{ ok: boolean; at: string }>(`/api/attendance/${action}`, {
+        method: 'POST',
+        accessToken,
+      }),
+    onSuccess: (data, action) => {
+      setClockMsg(
+        `${action === 'clock-in' ? 'Clocked in' : 'Clocked out'} at ${new Date(
+          data.at,
+        ).toLocaleTimeString()}`,
+      );
+      void qc.invalidateQueries({ queryKey: ['attendance-records'] });
+      void qc.invalidateQueries({ queryKey: ['attendance-summary'] });
     },
   });
 
@@ -213,8 +232,32 @@ export function AttendancePage() {
               ? 'Toggle who can receive leads each day of the week'
               : 'Your attendance sessions (auto-tracked from login/logout)'
         }
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => clock.mutate('clock-in')}
+              disabled={clock.isPending}
+            >
+              Clock in
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => clock.mutate('clock-out')}
+              disabled={clock.isPending}
+            >
+              Clock out
+            </Button>
+          </div>
+        }
       />
 
+      {clockMsg ? (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-100">
+          {clockMsg}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {isManager ? (
           <>
@@ -273,7 +316,7 @@ export function AttendancePage() {
           <TableSkeleton rows={8} />
         ) : (
           <div className={tableShellClass}>
-            <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 border-b border-table-border px-3 py-2.5">
               <div>
                 <p className="text-sm font-semibold text-navy">
                   Weekly availability
@@ -301,7 +344,7 @@ export function AttendancePage() {
                     <th
                       className={cn(
                         tableCellClass,
-                        'sticky left-0 z-30 min-w-[140px] border-r border-border bg-surface-muted sm:min-w-[200px]',
+                        'sticky left-0 z-30 min-w-[140px] border-r border-table-border bg-table-header sm:min-w-[200px]',
                       )}
                     >
                       Name
@@ -309,7 +352,10 @@ export function AttendancePage() {
                     {days.map((d) => (
                       <th
                         key={d}
-                        className={cn(tableCellClass, 'min-w-[88px] text-center')}
+                        className={cn(
+                          tableCellClass,
+                          'min-w-[88px] bg-table-header text-center',
+                        )}
                       >
                         <span className="hidden lg:inline">{DAY_LABELS[d]}</span>
                         <span className="lg:hidden">
@@ -325,7 +371,7 @@ export function AttendancePage() {
                       <td
                         className={cn(
                           tableCellClass,
-                          'sticky left-0 z-10 border-r border-border bg-surface-raised',
+                          'sticky left-0 z-10 border-r border-table-border bg-surface-raised',
                         )}
                       >
                         <div className="font-medium text-navy">{u.name}</div>

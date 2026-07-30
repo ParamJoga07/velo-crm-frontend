@@ -2,7 +2,9 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Building2,
   CalendarDays,
+  CalendarOff,
   Download,
+  FileText,
   FileUp,
   HelpCircle,
   LayoutDashboard,
@@ -13,6 +15,7 @@ import {
   Search,
   Settings2,
   Sun,
+  Target,
   Users,
   X,
 } from 'lucide-react';
@@ -26,6 +29,12 @@ import { apiFetch } from '@/lib/api';
 
 const ADMIN_NAV = [
   {
+    to: '/performance',
+    label: 'Performance',
+    icon: Target,
+    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+  },
+  {
     to: '/admin/users',
     label: 'User Management',
     icon: Users,
@@ -36,6 +45,30 @@ const ADMIN_NAV = [
     label: 'Attendance & Availability',
     icon: CalendarDays,
     roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+  },
+  {
+    to: '/leave',
+    label: 'Leave',
+    icon: CalendarOff,
+    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+  },
+  {
+    to: '/hrms',
+    label: 'HRMS',
+    icon: Users,
+    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+  },
+  {
+    to: '/documents',
+    label: 'Documents',
+    icon: FileText,
+    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+  },
+  {
+    to: '/company',
+    label: 'Company profile',
+    icon: Building2,
+    roles: ['SUPERADMIN', 'MANAGER'],
   },
   {
     to: '/admin/imports',

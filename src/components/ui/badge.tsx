@@ -11,16 +11,16 @@ export function Badge({
 }) {
   const tones = {
     neutral:
-      'border border-border bg-muted text-muted-foreground dark:border-white/10 dark:bg-white/5 dark:text-slate-300',
+      'border border-[#0e1117] bg-muted text-muted-foreground dark:border-[#0e1117] dark:bg-[#1a1e27] dark:text-slate-300',
     success:
-      'border border-success/20 bg-success/15 text-success dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300',
+      'border border-[#0e1117] bg-success/15 text-success dark:border-[#0e1117] dark:bg-[#1a2a22] dark:text-emerald-300',
     warning:
-      'border border-warning/20 bg-warning/15 text-warning dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300',
+      'border border-[#0e1117] bg-warning/15 text-warning dark:border-[#0e1117] dark:bg-[#2a2418] dark:text-amber-300',
     danger:
-      'border border-danger/20 bg-danger/15 text-danger dark:border-rose-400/20 dark:bg-rose-500/15 dark:text-rose-300',
+      'border border-[#0e1117] bg-danger/15 text-danger dark:border-[#0e1117] dark:bg-[#2a1c1c] dark:text-rose-300',
     accent:
-      'border border-primary/20 bg-primary-muted text-primary dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300',
-    new: 'border border-primary/20 bg-primary-muted text-primary-dark dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300',
+      'border border-[#0e1117] bg-primary-muted text-primary dark:border-[#0e1117] dark:bg-[#1e2430] dark:text-sky-300',
+    new: 'border border-[#0e1117] bg-primary-muted text-primary-dark dark:border-[#0e1117] dark:bg-[#1e2430] dark:text-sky-300',
   };
   return (
     <span

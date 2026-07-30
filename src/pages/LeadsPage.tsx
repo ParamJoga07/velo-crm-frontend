@@ -10,7 +10,12 @@ import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
+import {
+  LEAD_PRIORITY_LABELS,
+  LEAD_STAGE_LABELS,
+  type LeadPriority,
+  type LeadStage,
+} from '@velo/shared';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -22,6 +27,8 @@ type LeadRow = {
   name: string;
   phone: string;
   email: string | null;
+  city: string | null;
+  priority: string;
   stage: string;
   source: string;
   score: number;
@@ -101,7 +108,7 @@ export function LeadsPage() {
         accessorKey: 'score',
         header: 'Score',
         cell: ({ getValue }) => (
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface-muted font-mono text-xs font-semibold text-navy">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-table-border bg-surface-muted font-mono text-xs font-semibold text-navy">
             {Number(getValue() ?? 0)}
           </span>
         ),
@@ -128,8 +135,23 @@ export function LeadsPage() {
             {row.original.campaign?.name
               ? ` · ${row.original.campaign.name}`
               : ''}
+            {row.original.city ? ` · ${row.original.city}` : ''}
           </span>
         ),
+      },
+      {
+        accessorKey: 'priority',
+        header: 'Priority',
+        cell: ({ getValue }) => {
+          const p = String(getValue() ?? 'WARM');
+          const tone =
+            p === 'HOT' ? 'danger' : p === 'WARM' ? 'warning' : 'neutral';
+          return (
+            <Badge tone={tone}>
+              {LEAD_PRIORITY_LABELS[p as LeadPriority] ?? p}
+            </Badge>
+          );
+        },
       },
       {
         accessorKey: 'stage',
@@ -233,15 +255,16 @@ export function LeadsPage() {
               : ''
           }`}
           actions={
-            user?.role !== 'USER' ? (
+            <div className="flex flex-wrap gap-2">
               <Button asChild>
-                <Link to="/admin/imports/leads/new">Import leads</Link>
+                <Link to="/leads/new">Add lead</Link>
               </Button>
-            ) : (
-              <Button asChild size="sm" variant="secondary">
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
-            )
+              {user?.role !== 'USER' ? (
+                <Button asChild variant="secondary">
+                  <Link to="/admin/imports/leads/new">Import</Link>
+                </Button>
+              ) : null}
+            </div>
           }
         />
 

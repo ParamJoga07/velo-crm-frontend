@@ -430,7 +430,7 @@ export function ImportUploadPage() {
             <div className="md:col-span-2 overflow-auto">
               <table className="w-full min-w-[640px] border-collapse text-table">
                 <thead>
-                  <tr className="border-b border-border bg-surface-muted">
+                  <tr className="border-b border-table-border bg-table-header">
                     {preview.headers.map((h, idx) => (
                       <th key={idx} className="px-2 py-2 text-left align-top">
                         <div className="mb-1 text-[11px] font-semibold uppercase text-muted-foreground">
@@ -459,7 +459,7 @@ export function ImportUploadPage() {
                 </thead>
                 <tbody>
                   {preview.rows.slice(0, 8).map((row, rIdx) => (
-                    <tr key={rIdx} className="border-b border-border/70">
+                    <tr key={rIdx} className="border-b border-table-border">
                       {preview.headers.map((_, cIdx) => (
                         <td key={cIdx} className="px-2 py-1.5">
                           {row[cIdx] ?? ''}

@@ -1,0 +1,90 @@
+name: Deploy Frontend to DigitalOcean
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: npm run build
+
+  deploy-app-platform:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Login to DO Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Build and push web image
+        env:
+          REGISTRY: ${{ secrets.DO_REGISTRY }}
+          IMAGE: velo-crm-web
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_SHA::12}"
+          IMAGE_URI="${REGISTRY}/${IMAGE}:${TAG}"
+          LATEST_URI="${REGISTRY}/${IMAGE}:latest"
+          docker build --platform linux/amd64 \
+            --build-arg "VITE_API_URL=${VITE_API_URL}" \
+            -t "$IMAGE_URI" -t "$LATEST_URI" .
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+      - name: Trigger App Platform deployment
+        env:
+          APP_ID: ${{ secrets.DO_APP_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_ID:-}" ]; then
+            echo "DO_APP_ID not set — image pushed; wire App Platform when ready."
+            exit 0
+          fi
+          doctl apps create-deployment "$APP_ID" --force-rebuild --wait
+
+  deploy-droplet:
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'droplet'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy web over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.DROPLET_APP_PATH }}
+            git pull --ff-only origin main
+            docker compose --env-file .env.deploy -f docker-compose.deploy.yml up -d --build web

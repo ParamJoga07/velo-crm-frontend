@@ -8,17 +8,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-/** Shared shell — matches User Management tables */
+/** Shared shell — dark mode near-black borders, no light ring */
 export const tableShellClass =
-  'flex min-h-0 flex-col overflow-hidden rounded border border-border bg-surface-raised shadow-panel';
+  'flex min-h-0 flex-col overflow-hidden rounded-lg border border-table-border bg-surface-raised shadow-none dark:border-[#0e1117]';
 
 export const tableHeadClass =
-  'border-b border-border bg-surface-muted text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground';
+  'bg-table-header text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground';
 
 export const tableRowClass =
-  'border-b border-border/70 last:border-0 hover:bg-surface-muted/60';
+  'border-b border-table-border transition-colors last:border-0 hover:bg-table-row-hover dark:border-[#0e1117]';
 
-export const tableCellClass = 'px-3 py-2 align-middle';
+export const tableCellClass = 'px-3 py-2.5 align-middle';
 
 export type TablePagination = {
   page: number;
@@ -71,7 +71,7 @@ export function DataTable<T>({
   return (
     <div className={cn(tableShellClass, className)}>
       {title || description ? (
-        <div className="shrink-0 border-b border-border px-3 py-2.5">
+        <div className="shrink-0 border-b border-table-border px-3 py-2.5 dark:border-[#0e1117]">
           {title ? (
             <p className="text-sm font-semibold text-navy">{title}</p>
           ) : null}
@@ -97,7 +97,7 @@ export function DataTable<T>({
                     key={header.id}
                     className={cn(
                       tableCellClass,
-                      'bg-surface-muted shadow-[inset_0_-1px_0_var(--color-border)]',
+                      'bg-table-header shadow-[inset_0_-1px_0_var(--color-table-border)] dark:shadow-[inset_0_-1px_0_#0e1117]',
                     )}
                   >
                     {header.isPlaceholder
@@ -140,7 +140,7 @@ export function DataTable<T>({
       </div>
 
       {pagination ? (
-        <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-surface-muted/40 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-table-border bg-table-header/50 px-3 py-2.5 dark:border-[#0e1117] sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             {total === 0
               ? 'No rows'
@@ -151,7 +151,7 @@ export function DataTable<T>({
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 Rows
                 <select
-                  className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-navy"
+                  className="h-8 rounded-md border border-table-border bg-surface px-2 text-xs text-navy dark:border-[#0e1117]"
                   value={limit}
                   onChange={(e) =>
                     pagination.onLimitChange?.(Number(e.target.value))

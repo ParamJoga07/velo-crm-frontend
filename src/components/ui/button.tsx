@@ -11,7 +11,7 @@ const buttonVariants = cva(
         default:
           'bg-primary text-primary-foreground hover:bg-primary-dark shadow-panel',
         secondary:
-          'bg-surface-raised text-navy border border-border hover:bg-surface-muted',
+          'bg-surface-raised text-navy border border-border hover:bg-surface-muted dark:border-[#0e1117] dark:bg-[#1a1e27]',
         ghost: 'hover:bg-surface-muted text-navy',
         danger: 'bg-danger text-white hover:bg-danger/90',
       },
