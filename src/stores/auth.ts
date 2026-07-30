@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, LoginResponse } from '@velo/shared';
-import { apiFetch } from '@/lib/api';
+import { ApiClientError, apiFetch } from '@/lib/api';
 
 type TenantInfo = LoginResponse['tenant'];
 
@@ -25,11 +25,14 @@ type AuthState = {
   accessToken: string | null;
   impersonation: ImpersonationMeta | null;
   adminSession: SavedAdminSession | null;
+  hydrated: boolean;
   setSession: (payload: LoginResponse) => void;
   clear: () => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
+  /** After persist rehydrate: keep session if token valid, else refresh cookie, else clear. */
+  bootstrap: () => Promise<void>;
   startImpersonation: (userId: string) => Promise<void>;
   stopImpersonation: () => void;
 };
@@ -42,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       impersonation: null,
       adminSession: null,
+      hydrated: false,
       setSession: (payload) =>
         set({
           user: payload.user,
@@ -91,6 +95,20 @@ export const useAuthStore = create<AuthState>()(
           return false;
         }
       },
+      bootstrap: async () => {
+        const { accessToken, refresh, clear } = get();
+        if (!accessToken) return;
+        try {
+          await apiFetch('/api/auth/me', { accessToken });
+        } catch (err) {
+          if (err instanceof ApiClientError && err.status === 401) {
+            const ok = await refresh();
+            if (!ok) clear();
+            return;
+          }
+          // Network / transient — keep persisted session
+        }
+      },
       startImpersonation: async (userId: string) => {
         const { user, tenant, accessToken } = get();
         if (!user || !tenant || !accessToken) {
@@ -138,6 +156,15 @@ export const useAuthStore = create<AuthState>()(
         impersonation: s.impersonation,
         adminSession: s.adminSession,
       }),
+      onRehydrateStorage: () => () => {
+        useAuthStore.setState({ hydrated: true });
+        void useAuthStore.getState().bootstrap();
+      },
     },
   ),
 );
+
+// Persist may finish before listeners attach (cached session)
+if (useAuthStore.persist.hasHydrated()) {
+  useAuthStore.setState({ hydrated: true });
+}

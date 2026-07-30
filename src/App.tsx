@@ -22,7 +22,15 @@ import { ExportsPage } from '@/pages/ExportsPage';
 import { ReassignPage } from '@/pages/ReassignPage';
 
 function RequireAuth() {
+  const hydrated = useAuthStore((s) => s.hydrated);
   const user = useAuthStore((s) => s.user);
+  if (!hydrated) {
+    return (
+      <div className="grid min-h-screen place-items-center text-sm text-[var(--muted)]">
+        Loading…
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

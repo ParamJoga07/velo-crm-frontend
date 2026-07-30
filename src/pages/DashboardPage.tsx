@@ -129,7 +129,8 @@ export function DashboardPage() {
   };
 
   const query = useQuery({
-    queryKey: ['dashboard-summary'],
+    queryKey: ['dashboard-summary', accessToken],
+    enabled: !!accessToken,
     staleTime: 60_000,
     queryFn: () =>
       apiFetch<DashboardSummary>('/api/dashboard/summary', { accessToken }),
