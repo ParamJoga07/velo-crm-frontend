@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { useAuthStore } from '@/stores/auth';
+import { useAuthHasHydrated, useAuthStore } from '@/stores/auth';
 import { AppShell } from '@/layouts/AppShell';
 import { LoginPage } from '@/pages/LoginPage';
 import { LeadsPage } from '@/pages/LeadsPage';
@@ -22,7 +22,7 @@ import { ExportsPage } from '@/pages/ExportsPage';
 import { ReassignPage } from '@/pages/ReassignPage';
 
 function RequireAuth() {
-  const hydrated = useAuthStore((s) => s.hydrated);
+  const hydrated = useAuthHasHydrated();
   const user = useAuthStore((s) => s.user);
   if (!hydrated) {
     return (

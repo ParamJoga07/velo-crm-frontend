@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, LoginResponse } from '@velo/shared';
@@ -25,7 +26,6 @@ type AuthState = {
   accessToken: string | null;
   impersonation: ImpersonationMeta | null;
   adminSession: SavedAdminSession | null;
-  hydrated: boolean;
   setSession: (payload: LoginResponse) => void;
   clear: () => void;
   login: (email: string, password: string) => Promise<void>;
@@ -45,7 +45,6 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       impersonation: null,
       adminSession: null,
-      hydrated: false,
       setSession: (payload) =>
         set({
           user: payload.user,
@@ -104,9 +103,7 @@ export const useAuthStore = create<AuthState>()(
           if (err instanceof ApiClientError && err.status === 401) {
             const ok = await refresh();
             if (!ok) clear();
-            return;
           }
-          // Network / transient — keep persisted session
         }
       },
       startImpersonation: async (userId: string) => {
@@ -157,14 +154,31 @@ export const useAuthStore = create<AuthState>()(
         adminSession: s.adminSession,
       }),
       onRehydrateStorage: () => () => {
-        useAuthStore.setState({ hydrated: true });
         void useAuthStore.getState().bootstrap();
       },
     },
   ),
 );
 
-// Persist may finish before listeners attach (cached session)
-if (useAuthStore.persist.hasHydrated()) {
-  useAuthStore.setState({ hydrated: true });
+/** True once localStorage session has been read into the store. */
+export function useAuthHasHydrated() {
+  const [hydrated, setHydrated] = useState(() =>
+    useAuthStore.persist.hasHydrated(),
+  );
+
+  useEffect(() => {
+    setHydrated(useAuthStore.persist.hasHydrated());
+    return useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+  }, []);
+
+  // Safety net: never block the UI longer than a tick if persist stalls
+  useEffect(() => {
+    if (hydrated) return;
+    const t = window.setTimeout(() => setHydrated(true), 500);
+    return () => window.clearTimeout(t);
+  }, [hydrated]);
+
+  return hydrated;
 }
