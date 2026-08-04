@@ -51,6 +51,12 @@ export const CreateTeamSchema = z.object({
 });
 export type CreateTeamInput = z.infer<typeof CreateTeamSchema>;
 
+export const UpdateTeamSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  departmentName: z.string().min(1).max(120).optional().nullable(),
+});
+export type UpdateTeamInput = z.infer<typeof UpdateTeamSchema>;
+
 export const AddTeamMemberSchema = z.object({
   userId: z.string().uuid().optional(),
   // Or create a new user directly into the team

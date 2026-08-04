@@ -12,6 +12,14 @@ export class ApiClientError extends Error {
   }
 }
 
+type AuthRefresh = () => Promise<string | null>;
+let authRefresh: AuthRefresh | null = null;
+
+/** Register once from the auth store so 401s can silently refresh. */
+export function registerAuthRefresh(fn: AuthRefresh) {
+  authRefresh = fn;
+}
+
 function isPaginatedEnvelope(
   json: unknown,
 ): json is { data: unknown; meta: Record<string, unknown>; error: unknown } {
@@ -24,11 +32,23 @@ function isPaginatedEnvelope(
   return 'cursor' in m || 'hasMore' in m || 'total' in m || 'unread' in m;
 }
 
+function isAuthPath(path: string) {
+  return (
+    path.includes('/api/auth/login') ||
+    path.includes('/api/auth/refresh') ||
+    path.includes('/api/auth/logout')
+  );
+}
+
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit & { accessToken?: string | null } = {},
+  init: RequestInit & {
+    accessToken?: string | null;
+    /** Internal: already retried after refresh */
+    _authRetry?: boolean;
+  } = {},
 ): Promise<T> {
-  const { accessToken, headers, ...rest } = init;
+  const { accessToken, headers, _authRetry, ...rest } = init;
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     credentials: 'include',
@@ -41,6 +61,21 @@ export async function apiFetch<T>(
 
   const json = (await res.json()) as ApiEnvelope<T>;
   if (!res.ok || json.error) {
+    if (
+      res.status === 401 &&
+      !_authRetry &&
+      authRefresh &&
+      !isAuthPath(path)
+    ) {
+      const nextToken = await authRefresh();
+      if (nextToken) {
+        return apiFetch<T>(path, {
+          ...init,
+          accessToken: nextToken,
+          _authRetry: true,
+        });
+      }
+    }
     throw new ApiClientError(
       json.error?.code ?? 'HTTP_ERROR',
       json.error?.message ?? res.statusText,
@@ -48,7 +83,6 @@ export async function apiFetch<T>(
     );
   }
 
-  // Keep paginated { data, meta, error } intact so history tables get rows + totals
   if (isPaginatedEnvelope(json)) {
     return json as T;
   }

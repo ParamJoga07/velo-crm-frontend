@@ -19,6 +19,7 @@ import {
   type LeadStage,
 } from '@velo/shared';
 import { PageHeader } from '@/components/PageHeader';
+import { LeadPriorityBadge, LeadStageBadge } from '@/components/LeadStatusBadges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,12 +115,6 @@ function activityText(a: LeadDetail['activities'][0]) {
   if (a.type === 'VIEW_NO_ACTION')
     return 'Opened without saving — marked as No Future Activity.';
   return a.type;
-}
-
-function priorityTone(p: string): 'danger' | 'warning' | 'neutral' {
-  if (p === 'HOT') return 'danger';
-  if (p === 'WARM') return 'warning';
-  return 'neutral';
 }
 
 export function LeadDetailPage() {
@@ -367,9 +362,8 @@ export function LeadDetailPage() {
         }`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={priorityTone(lead.priority)}>
-              {LEAD_PRIORITY_LABELS[lead.priority as LeadPriority] ?? lead.priority}
-            </Badge>
+            <LeadPriorityBadge priority={lead.priority} />
+            <LeadStageBadge stage={lead.stage} />
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface font-mono text-sm font-semibold text-navy">
               {lead.score}
             </span>

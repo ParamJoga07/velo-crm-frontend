@@ -7,14 +7,13 @@ import {
 import type { ColumnDef } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
+import { LeadStageBadge } from '@/components/LeadStatusBadges';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
-import { Badge } from '@/components/ui/badge';
 import { DataTable, TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -50,24 +49,6 @@ type HistoryRow = {
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
 };
-
-function stageTone(stage: string): 'new' | 'accent' | 'success' | 'danger' | 'neutral' | 'warning' {
-  switch (stage) {
-    case 'INCOMING':
-      return 'new';
-    case 'PROSPECT':
-      return 'accent';
-    case 'OPPORTUNITY':
-      return 'warning';
-    case 'BOOKED':
-      return 'success';
-    case 'LOST':
-    case 'UNQUALIFIED':
-      return 'danger';
-    default:
-      return 'neutral';
-  }
-}
 
 export function ReassignPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -192,15 +173,9 @@ export function ReassignPage() {
       {
         accessorKey: 'stage',
         header: 'Stage',
-        cell: ({ getValue }) => {
-          const stage = String(getValue());
-          return (
-            <Badge tone={stageTone(stage)}>
-              {LEAD_STAGE_LABELS[stage as LeadStage] ??
-                stage.replace(/_/g, ' ')}
-            </Badge>
-          );
-        },
+        cell: ({ getValue }) => (
+          <LeadStageBadge stage={String(getValue())} />
+        ),
       },
       {
         id: 'assignee',

@@ -75,8 +75,11 @@ export function UsersPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showUserForm, setShowUserForm] = useState(false);
   const [showTeamForm, setShowTeamForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editingTeam, setEditingTeam] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetInfo, setResetInfo] = useState<string | null>(null);
+  const [memberSearch, setMemberSearch] = useState('');
 
   const [userForm, setUserForm] = useState({
     name: '',
@@ -90,13 +93,20 @@ export function UsersPage() {
     name: '',
     departmentName: 'Sales',
   });
-  const [memberForm, setMemberForm] = useState({
+  const [editTeamForm, setEditTeamForm] = useState({
     name: '',
-    email: '',
-    password: 'Password123!',
+    departmentName: '',
+  });
+  const [editUserForm, setEditUserForm] = useState({
+    name: '',
     role: 'USER',
-    asManager: false,
+    phone: '',
+    teamId: '',
+    isActive: true,
+  });
+  const [memberForm, setMemberForm] = useState({
     existingUserId: '',
+    asManager: false,
   });
 
   const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
@@ -149,10 +159,20 @@ export function UsersPage() {
       }),
   });
 
+  useEffect(() => {
+    if (!teamDetail.data) return;
+    setEditTeamForm({
+      name: teamDetail.data.name,
+      departmentName: teamDetail.data.department?.name ?? 'Sales',
+    });
+    setEditingTeam(false);
+  }, [teamDetail.data]);
+
   const invalidateAll = () => {
     void qc.invalidateQueries({ queryKey: ['users'] });
     void qc.invalidateQueries({ queryKey: ['teams'] });
     void qc.invalidateQueries({ queryKey: ['team-detail'] });
+    void qc.invalidateQueries({ queryKey: ['hrms-employees'] });
   };
 
   const createUser = useMutation({
@@ -185,6 +205,38 @@ export function UsersPage() {
     onError: (e: Error) => setError(e.message),
   });
 
+  const updateUser = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/users/${editingUser!.id}`, {
+        method: 'PATCH',
+        accessToken,
+        body: JSON.stringify({
+          name: editUserForm.name,
+          role: editUserForm.role,
+          phone: editUserForm.phone || null,
+          teamId: editUserForm.teamId || null,
+          isActive: editUserForm.isActive,
+        }),
+      }),
+    onSuccess: () => {
+      setEditingUser(null);
+      setError(null);
+      invalidateAll();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api/users/${id}`, { method: 'DELETE', accessToken }),
+    onSuccess: () => {
+      setEditingUser(null);
+      setError(null);
+      invalidateAll();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const createTeam = useMutation({
     mutationFn: () =>
       apiFetch<TeamRow>('/api/users/teams', {
@@ -205,35 +257,51 @@ export function UsersPage() {
     onError: (e: Error) => setError(e.message),
   });
 
+  const updateTeam = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/users/teams/${selectedTeamId}`, {
+        method: 'PATCH',
+        accessToken,
+        body: JSON.stringify({
+          name: editTeamForm.name,
+          departmentName: editTeamForm.departmentName || 'Sales',
+        }),
+      }),
+    onSuccess: () => {
+      setEditingTeam(false);
+      setError(null);
+      invalidateAll();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const deleteTeam = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/users/teams/${selectedTeamId}`, {
+        method: 'DELETE',
+        accessToken,
+      }),
+    onSuccess: () => {
+      setSelectedTeamId(null);
+      setError(null);
+      invalidateAll();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const addMember = useMutation({
     mutationFn: () =>
       apiFetch(`/api/users/teams/${selectedTeamId}/members`, {
         method: 'POST',
         accessToken,
-        body: JSON.stringify(
-          memberForm.existingUserId
-            ? {
-                userId: memberForm.existingUserId,
-                asManager: memberForm.asManager,
-              }
-            : {
-                name: memberForm.name,
-                email: memberForm.email,
-                password: memberForm.password,
-                role: memberForm.role,
-                asManager: memberForm.asManager,
-              },
-        ),
+        body: JSON.stringify({
+          userId: memberForm.existingUserId,
+          asManager: memberForm.asManager,
+        }),
       }),
     onSuccess: () => {
-      setMemberForm({
-        name: '',
-        email: '',
-        password: 'Password123!',
-        role: 'USER',
-        asManager: false,
-        existingUserId: '',
-      });
+      setMemberForm({ existingUserId: '', asManager: false });
+      setMemberSearch('');
       setError(null);
       invalidateAll();
     },
@@ -252,8 +320,16 @@ export function UsersPage() {
     const rosterIds = new Set(
       (teamDetail.data?.roster ?? []).map((r) => r.id),
     );
-    return (allUsersQuery.data?.data ?? []).filter((u) => !rosterIds.has(u.id));
-  }, [allUsersQuery.data, teamDetail.data]);
+    const q = memberSearch.trim().toLowerCase();
+    return (allUsersQuery.data?.data ?? [])
+      .filter((u) => !rosterIds.has(u.id) && u.isActive)
+      .filter(
+        (u) =>
+          !q ||
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q),
+      );
+  }, [allUsersQuery.data, teamDetail.data, memberSearch]);
 
   type RosterRow = TeamDetail['roster'][number];
 
@@ -351,20 +427,9 @@ export function UsersPage() {
       accessorKey: 'isActive',
       header: 'Status',
       cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() =>
-            void apiFetch(`/api/users/${row.original.id}`, {
-              method: 'PATCH',
-              accessToken,
-              body: JSON.stringify({ isActive: !row.original.isActive }),
-            }).then(invalidateAll)
-          }
-        >
-          <Badge tone={row.original.isActive ? 'success' : 'danger'}>
-            {row.original.isActive ? 'Active' : 'Inactive'}
-          </Badge>
-        </button>
+        <Badge tone={row.original.isActive ? 'success' : 'danger'}>
+          {row.original.isActive ? 'Active' : 'Inactive'}
+        </Badge>
       ),
     },
     {
@@ -372,59 +437,81 @@ export function UsersPage() {
       header: 'Admin',
       cell: ({ row }) => {
         const u = row.original;
-        if (u.id === me?.id) {
-          return <span className="text-xs text-muted-foreground">You</span>;
-        }
         return (
           <div className="flex flex-wrap gap-1.5">
             <Button
               size="sm"
               variant="secondary"
               className="h-7"
-              disabled={!u.isActive}
               onClick={() => {
-                void startImpersonation(u.id)
-                  .then(() => {
-                    void qc.clear();
-                    navigate('/dashboard');
-                  })
-                  .catch((e: Error) => setError(e.message));
+                setEditingUser(u);
+                setEditUserForm({
+                  name: u.name,
+                  role: u.role,
+                  phone: u.phone ?? '',
+                  teamId: u.team?.id ?? '',
+                  isActive: u.isActive,
+                });
+                setShowUserForm(false);
+                setShowTeamForm(false);
               }}
             >
-              View as
+              Edit
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-7"
-              onClick={() => {
-                const custom = window.prompt(
-                  `Reset password for ${u.email}. Leave blank to auto-generate.`,
-                  '',
-                );
-                if (custom === null) return;
-                void apiFetch<{
-                  ok: boolean;
-                  temporaryPassword: string;
-                  email: string;
-                }>(`/api/users/${u.id}/reset-password`, {
-                  method: 'POST',
-                  accessToken,
-                  body: JSON.stringify(
-                    custom.trim() ? { password: custom.trim() } : {},
-                  ),
-                })
-                  .then((res) => {
-                    setResetInfo(
-                      `Password for ${res.email}: ${res.temporaryPassword}`,
+            {u.id !== me?.id ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7"
+                  disabled={!u.isActive}
+                  onClick={() => {
+                    void startImpersonation(u.id)
+                      .then(() => {
+                        void qc.clear();
+                        navigate('/dashboard');
+                      })
+                      .catch((e: Error) => setError(e.message));
+                  }}
+                >
+                  View as
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7"
+                  onClick={() => {
+                    const custom = window.prompt(
+                      `Reset password for ${u.email}. Leave blank to auto-generate.`,
+                      '',
                     );
-                    setError(null);
-                  })
-                  .catch((e: Error) => setError(e.message));
-              }}
-            >
-              Reset password
-            </Button>
+                    if (custom === null) return;
+                    void apiFetch<{
+                      ok: boolean;
+                      temporaryPassword: string;
+                      email: string;
+                    }>(`/api/users/${u.id}/reset-password`, {
+                      method: 'POST',
+                      accessToken,
+                      body: JSON.stringify(
+                        custom.trim() ? { password: custom.trim() } : {},
+                      ),
+                    })
+                      .then((res) => {
+                        setResetInfo(
+                          `Password for ${res.email}: ${res.temporaryPassword}`,
+                        );
+                        setError(null);
+                      })
+                      .catch((e: Error) => setError(e.message));
+                  }}
+                >
+                  Reset password
+                </Button>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">You</span>
+            )}
           </div>
         );
       },
@@ -435,7 +522,7 @@ export function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="User Management"
-        description="Create teams, add members, and manage attendance scope"
+        description="Create teams, assign agents from the user list, and manage access"
         actions={
           <div className="flex gap-2">
             <Button
@@ -444,6 +531,7 @@ export function UsersPage() {
               onClick={() => {
                 setShowTeamForm((v) => !v);
                 setShowUserForm(false);
+                setEditingUser(null);
               }}
             >
               {showTeamForm ? 'Cancel' : 'New team'}
@@ -453,6 +541,7 @@ export function UsersPage() {
               onClick={() => {
                 setShowUserForm((v) => !v);
                 setShowTeamForm(false);
+                setEditingUser(null);
                 if (selectedTeamId) {
                   setUserForm((f) => ({ ...f, teamId: selectedTeamId }));
                 }
@@ -519,6 +608,10 @@ export function UsersPage() {
       {showUserForm ? (
         <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
           <h2 className="text-sm font-semibold text-navy">Create user</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            New accounts are created here once. Assign them to teams from the
+            team roster (select existing users — no typing names).
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label>Name</Label>
@@ -595,6 +688,120 @@ export function UsersPage() {
         </section>
       ) : null}
 
+      {editingUser ? (
+        <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-navy">
+              Edit agent · {editingUser.email}
+            </h2>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setEditingUser(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label>Name</Label>
+              <Input
+                className="mt-1.5"
+                value={editUserForm.name}
+                onChange={(e) =>
+                  setEditUserForm({ ...editUserForm, name: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <select
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                value={editUserForm.role}
+                onChange={(e) =>
+                  setEditUserForm({ ...editUserForm, role: e.target.value })
+                }
+              >
+                <option value="USER">USER</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="SUPERADMIN">SUPERADMIN</option>
+              </select>
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                className="mt-1.5"
+                value={editUserForm.phone}
+                onChange={(e) =>
+                  setEditUserForm({ ...editUserForm, phone: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Team</Label>
+              <select
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                value={editUserForm.teamId}
+                onChange={(e) =>
+                  setEditUserForm({ ...editUserForm, teamId: e.target.value })
+                }
+              >
+                <option value="">None</option>
+                {(teamsQuery.data ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <select
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                value={editUserForm.isActive ? '1' : '0'}
+                onChange={(e) =>
+                  setEditUserForm({
+                    ...editUserForm,
+                    isActive: e.target.value === '1',
+                  })
+                }
+              >
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button
+                className="flex-1"
+                disabled={updateUser.isPending}
+                onClick={() => updateUser.mutate()}
+              >
+                Save changes
+              </Button>
+              {editingUser.id !== me?.id && me?.role === 'SUPERADMIN' ? (
+                <Button
+                  variant="secondary"
+                  className="text-danger"
+                  disabled={deleteUser.isPending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Deactivate and remove ${editingUser.name} from teams?`,
+                      )
+                    ) {
+                      return;
+                    }
+                    deleteUser.mutate(editingUser.id);
+                  }}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-2">
           <div className="flex items-center justify-between">
@@ -643,21 +850,104 @@ export function UsersPage() {
           {selectedTeamId && teamDetail.data ? (
             <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-base font-semibold text-navy">
-                    {teamDetail.data.name}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {teamDetail.data.department?.name ?? 'No department'} ·{' '}
-                    {teamDetail.data.roster.length} members
-                  </p>
+                <div className="min-w-0 flex-1">
+                  {editingTeam ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <Label>Team name</Label>
+                        <Input
+                          className="mt-1"
+                          value={editTeamForm.name}
+                          onChange={(e) =>
+                            setEditTeamForm({
+                              ...editTeamForm,
+                              name: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Department</Label>
+                        <Input
+                          className="mt-1"
+                          value={editTeamForm.departmentName}
+                          onChange={(e) =>
+                            setEditTeamForm({
+                              ...editTeamForm,
+                              departmentName: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-base font-semibold text-navy">
+                        {teamDetail.data.name}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {teamDetail.data.department?.name ?? 'No department'} ·{' '}
+                        {teamDetail.data.roster.length} members
+                      </p>
+                    </>
+                  )}
                 </div>
-                <Link
-                  to={`/admin/attendance?teamId=${selectedTeamId}`}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  View team attendance →
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  {editingTeam ? (
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={updateTeam.isPending}
+                        onClick={() => updateTeam.mutate()}
+                      >
+                        Save team
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingTeam(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingTeam(true)}
+                      >
+                        Edit team
+                      </Button>
+                      {me?.role === 'SUPERADMIN' ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="text-danger"
+                          disabled={deleteTeam.isPending}
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                `Delete team “${teamDetail.data.name}”? Members stay as users but leave this team.`,
+                              )
+                            ) {
+                              return;
+                            }
+                            deleteTeam.mutate();
+                          }}
+                        >
+                          Delete team
+                        </Button>
+                      ) : null}
+                      <Link
+                        to={`/admin/attendance?teamId=${selectedTeamId}`}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        View team attendance →
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="mt-4">
@@ -670,11 +960,23 @@ export function UsersPage() {
 
               <div className="mt-4 border-t border-border pt-4">
                 <h3 className="text-sm font-semibold text-navy">
-                  Add member to this team
+                  Add member from User Management
                 </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick an existing user — names are not typed manually.
+                </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <Label>Existing user (optional)</Label>
+                  <div>
+                    <Label>Search users</Label>
+                    <Input
+                      className="mt-1.5"
+                      placeholder="Filter by name or email…"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label>Select user</Label>
                     <select
                       className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
                       value={memberForm.existingUserId}
@@ -685,73 +987,21 @@ export function UsersPage() {
                         })
                       }
                     >
-                      <option value="">Create new user below…</option>
+                      <option value="">Choose a user…</option>
                       {unassignedUsers.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.name} ({u.email})
+                          {u.name} · {u.email}
+                          {u.team ? ` · ${u.team.name}` : ''}
                         </option>
                       ))}
                     </select>
+                    {unassignedUsers.length === 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        No available users. Create one with “Add user”, then
+                        assign them here.
+                      </p>
+                    ) : null}
                   </div>
-                  {!memberForm.existingUserId ? (
-                    <>
-                      <div>
-                        <Label>Name</Label>
-                        <Input
-                          className="mt-1.5"
-                          value={memberForm.name}
-                          onChange={(e) =>
-                            setMemberForm({
-                              ...memberForm,
-                              name: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input
-                          className="mt-1.5"
-                          value={memberForm.email}
-                          onChange={(e) =>
-                            setMemberForm({
-                              ...memberForm,
-                              email: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>Password</Label>
-                        <Input
-                          className="mt-1.5"
-                          value={memberForm.password}
-                          onChange={(e) =>
-                            setMemberForm({
-                              ...memberForm,
-                              password: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label>Role</Label>
-                        <select
-                          className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-                          value={memberForm.role}
-                          onChange={(e) =>
-                            setMemberForm({
-                              ...memberForm,
-                              role: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="USER">USER</option>
-                          <option value="MANAGER">MANAGER</option>
-                        </select>
-                      </div>
-                    </>
-                  ) : null}
                   <div className="flex items-end gap-3">
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -768,7 +1018,9 @@ export function UsersPage() {
                     </label>
                     <Button
                       className="ml-auto"
-                      disabled={addMember.isPending}
+                      disabled={
+                        addMember.isPending || !memberForm.existingUserId
+                      }
                       onClick={() => addMember.mutate()}
                     >
                       Add to team

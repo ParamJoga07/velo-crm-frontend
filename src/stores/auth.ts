@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, LoginResponse } from '@velo/shared';
-import { ApiClientError, apiFetch } from '@/lib/api';
+import { ApiClientError, apiFetch, registerAuthRefresh } from '@/lib/api';
 
 type TenantInfo = LoginResponse['tenant'];
 
@@ -26,12 +26,13 @@ type AuthState = {
   accessToken: string | null;
   impersonation: ImpersonationMeta | null;
   adminSession: SavedAdminSession | null;
+  /** False until post-reload bootstrap finishes (avoids 401 race). */
+  sessionReady: boolean;
   setSession: (payload: LoginResponse) => void;
   clear: () => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
-  /** After persist rehydrate: keep session if token valid, else refresh cookie, else clear. */
   bootstrap: () => Promise<void>;
   startImpersonation: (userId: string) => Promise<void>;
   stopImpersonation: () => void;
@@ -45,11 +46,13 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       impersonation: null,
       adminSession: null,
+      sessionReady: false,
       setSession: (payload) =>
         set({
           user: payload.user,
           tenant: payload.tenant,
           accessToken: payload.tokens.accessToken,
+          sessionReady: true,
         }),
       clear: () =>
         set({
@@ -58,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           impersonation: null,
           adminSession: null,
+          sessionReady: true,
         }),
       login: async (email, password) => {
         const data = await apiFetch<LoginResponse>('/api/auth/login', {
@@ -70,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: data.tokens.accessToken,
           impersonation: null,
           adminSession: null,
+          sessionReady: true,
         });
       },
       logout: async () => {
@@ -95,15 +100,26 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       bootstrap: async () => {
-        const { accessToken, refresh, clear } = get();
-        if (!accessToken) return;
+        const { accessToken, user, refresh, clear } = get();
         try {
-          await apiFetch('/api/auth/me', { accessToken });
-        } catch (err) {
-          if (err instanceof ApiClientError && err.status === 401) {
+          if (!accessToken && !user) {
+            return;
+          }
+          if (!accessToken && user) {
             const ok = await refresh();
             if (!ok) clear();
+            return;
           }
+          try {
+            await apiFetch('/api/auth/me', { accessToken });
+          } catch (err) {
+            if (err instanceof ApiClientError && err.status === 401) {
+              const ok = await refresh();
+              if (!ok) clear();
+            }
+          }
+        } finally {
+          set({ sessionReady: true });
         }
       },
       startImpersonation: async (userId: string) => {
@@ -127,6 +143,7 @@ export const useAuthStore = create<AuthState>()(
           tenant: data.tenant,
           accessToken: data.tokens.accessToken,
           impersonation: data.impersonation,
+          sessionReady: true,
         });
       },
       stopImpersonation: () => {
@@ -141,6 +158,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: admin.accessToken,
           impersonation: null,
           adminSession: null,
+          sessionReady: true,
         });
       },
     }),
@@ -160,6 +178,11 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
+registerAuthRefresh(async () => {
+  const ok = await useAuthStore.getState().refresh();
+  return ok ? useAuthStore.getState().accessToken : null;
+});
+
 /** True once localStorage session has been read into the store. */
 export function useAuthHasHydrated() {
   const [hydrated, setHydrated] = useState(() =>
@@ -173,10 +196,12 @@ export function useAuthHasHydrated() {
     });
   }, []);
 
-  // Safety net: never block the UI longer than a tick if persist stalls
   useEffect(() => {
     if (hydrated) return;
-    const t = window.setTimeout(() => setHydrated(true), 500);
+    const t = window.setTimeout(() => {
+      setHydrated(true);
+      void useAuthStore.getState().bootstrap();
+    }, 800);
     return () => window.clearTimeout(t);
   }, [hydrated]);
 

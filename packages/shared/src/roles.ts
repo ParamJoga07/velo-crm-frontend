@@ -25,10 +25,33 @@ export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   LOST: 'Lost',
 };
 
+/** Distinct list colors for each lead stage */
+export const LEAD_STAGE_COLORS: Record<LeadStage, string> = {
+  INCOMING:
+    'border-sky-600/40 bg-sky-500/15 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/20 dark:text-sky-200',
+  PROSPECT:
+    'border-violet-600/40 bg-violet-500/15 text-violet-800 dark:border-violet-400/30 dark:bg-violet-500/20 dark:text-violet-200',
+  OPPORTUNITY:
+    'border-amber-600/40 bg-amber-500/15 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/20 dark:text-amber-200',
+  UNQUALIFIED:
+    'border-slate-500/40 bg-slate-500/15 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/20 dark:text-slate-200',
+  BOOKED:
+    'border-emerald-600/40 bg-emerald-500/15 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-200',
+  LOST:
+    'border-rose-600/40 bg-rose-500/15 text-rose-800 dark:border-rose-400/30 dark:bg-rose-500/20 dark:text-rose-200',
+};
+
 export const LEAD_PRIORITY_LABELS: Record<LeadPriority, string> = {
   HOT: 'Hot',
   WARM: 'Warm',
   COLD: 'Cold',
+};
+
+/** Distinct list colors for Hot / Warm / Cold */
+export const LEAD_PRIORITY_COLORS: Record<LeadPriority, string> = {
+  HOT: 'border-rose-600/40 bg-rose-500/15 text-rose-800 dark:border-rose-400/30 dark:bg-rose-500/20 dark:text-rose-200',
+  WARM: 'border-orange-600/40 bg-orange-500/15 text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/20 dark:text-orange-200',
+  COLD: 'border-cyan-600/40 bg-cyan-500/15 text-cyan-800 dark:border-cyan-400/30 dark:bg-cyan-500/20 dark:text-cyan-200',
 };
 
 export const ACTIVITY_TYPES = [

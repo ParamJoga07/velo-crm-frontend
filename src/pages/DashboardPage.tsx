@@ -114,6 +114,7 @@ function shortName(name: string, max = 14) {
 
 export function DashboardPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const sessionReady = useAuthStore((s) => s.sessionReady);
   const user = useAuthStore((s) => s.user);
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === 'dark';
@@ -130,7 +131,7 @@ export function DashboardPage() {
 
   const query = useQuery({
     queryKey: ['dashboard-summary', accessToken],
-    enabled: !!accessToken,
+    enabled: !!accessToken && sessionReady,
     staleTime: 60_000,
     queryFn: () =>
       apiFetch<DashboardSummary>('/api/dashboard/summary', { accessToken }),

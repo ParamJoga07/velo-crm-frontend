@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,10 @@ import { TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
+import {
+  normalizeListEnvelope,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 
 type Profile = {
   id: string;
@@ -46,6 +51,16 @@ type Employee = {
   employeeProfile: Profile | null;
 };
 
+type UserRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  isActive: boolean;
+  team: { id: string; name: string } | null;
+};
+
 function toDateInput(v: string | null | undefined) {
   if (!v) return '';
   return v.slice(0, 10);
@@ -60,12 +75,44 @@ export function HrmsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [addOpen, setAddOpen] = useState(false);
+  const [userQuery, setUserQuery] = useState('');
+  const [pickedUserId, setPickedUserId] = useState('');
 
   const employees = useQuery({
     queryKey: ['hrms-employees'],
     enabled: isManager,
     queryFn: () => apiFetch<Employee[]>('/api/hrms/employees', { accessToken }),
   });
+
+  const directoryUsers = useQuery({
+    queryKey: ['users', 'hrms-picker'],
+    enabled: isManager && addOpen,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await apiFetch<ListEnvelope<UserRow>>(
+        '/api/users?limit=100&page=1',
+        { accessToken },
+      );
+      return normalizeListEnvelope(res);
+    },
+  });
+
+  const suggestions = useMemo(() => {
+    const listed = new Set((employees.data ?? []).map((e) => e.id));
+    const q = userQuery.trim().toLowerCase();
+    return (directoryUsers.data?.data ?? [])
+      .filter((u) => u.isActive)
+      .filter((u) => !listed.has(u.id) || !employees.data?.find((e) => e.id === u.id)?.employeeProfile)
+      .filter(
+        (u) =>
+          !q ||
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.team?.name ?? '').toLowerCase().includes(q),
+      )
+      .slice(0, 12);
+  }, [directoryUsers.data, employees.data, userQuery]);
 
   const targetId = isManager ? selectedId ?? myId ?? null : myId ?? null;
 
@@ -140,6 +187,26 @@ export function HrmsPage() {
     onError: (e: Error) => setError(e.message),
   });
 
+  const addEmployee = useMutation({
+    mutationFn: async (userId: string) => {
+      // GET creates profile if missing (get-or-create on backend)
+      await apiFetch<Profile>(`/api/hrms/employees/${userId}`, {
+        accessToken,
+      });
+      return userId;
+    },
+    onSuccess: (userId) => {
+      setAddOpen(false);
+      setUserQuery('');
+      setPickedUserId('');
+      setSelectedId(userId);
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ['hrms-employees'] });
+      void qc.invalidateQueries({ queryKey: ['hrms-profile', userId] });
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     save.mutate();
@@ -154,13 +221,111 @@ export function HrmsPage() {
     <div className="space-y-4">
       <PageHeader
         title="HRMS"
-        description="Employee profiles and personal records"
+        description="Employee profiles linked to User Management accounts"
+        actions={
+          isManager ? (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAddOpen((v) => !v)}
+              >
+                {addOpen ? 'Cancel' : 'Add employee'}
+              </Button>
+              <Link
+                to="/admin/users"
+                className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-primary hover:bg-surface-muted"
+              >
+                User Management →
+              </Link>
+            </div>
+          ) : undefined
+        }
       />
 
       {error ? (
         <div className="rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-800">
           {error}
         </div>
+      ) : null}
+
+      {addOpen && isManager ? (
+        <section className="rounded-md border border-border bg-surface-raised p-4 shadow-panel">
+          <h2 className="text-sm font-semibold text-navy">
+            Add employee from User Management
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Search and select an existing user — do not type names manually.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div>
+              <Label>Search</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="Name, email, or team…"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Select user</Label>
+              <select
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                value={pickedUserId}
+                onChange={(e) => setPickedUserId(e.target.value)}
+              >
+                <option value="">Choose…</option>
+                {suggestions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} · {u.email}
+                    {u.team ? ` · ${u.team.name}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                disabled={!pickedUserId || addEmployee.isPending}
+                onClick={() => addEmployee.mutate(pickedUserId)}
+              >
+                {addEmployee.isPending ? 'Adding…' : 'Open profile'}
+              </Button>
+            </div>
+          </div>
+          {userQuery.trim() && suggestions.length > 0 ? (
+            <ul className="mt-3 max-h-40 space-y-1 overflow-auto rounded-md border border-border p-2">
+              {suggestions.map((u) => (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-muted',
+                      pickedUserId === u.id && 'bg-primary-muted',
+                    )}
+                    onClick={() => setPickedUserId(u.id)}
+                  >
+                    <span className="font-medium text-navy">{u.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {u.email}
+                      {u.team ? ` · ${u.team.name}` : ''} · {u.role}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {!directoryUsers.isLoading && suggestions.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No matching users.{' '}
+              <Link to="/admin/users" className="text-primary underline">
+                Create them in User Management
+              </Link>{' '}
+              first.
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       <div className={cn('grid gap-4', isManager && 'lg:grid-cols-[240px_1fr]')}>

@@ -23,8 +23,10 @@ import { ReassignPage } from '@/pages/ReassignPage';
 
 function RequireAuth() {
   const hydrated = useAuthHasHydrated();
+  const sessionReady = useAuthStore((s) => s.sessionReady);
   const user = useAuthStore((s) => s.user);
-  if (!hydrated) {
+  // Wait for hydrate + token refresh before mounting API-driven pages
+  if (!hydrated || (user && !sessionReady)) {
     return (
       <div className="grid min-h-screen place-items-center text-sm text-[var(--muted)]">
         Loading…

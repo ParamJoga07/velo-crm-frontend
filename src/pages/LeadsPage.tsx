@@ -5,17 +5,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { DataTable, TableSkeleton } from '@/components/ui/data-table';
-import { Badge } from '@/components/ui/badge';
+import { LeadPriorityBadge, LeadStageBadge } from '@/components/LeadStatusBadges';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import {
-  LEAD_PRIORITY_LABELS,
-  LEAD_STAGE_LABELS,
-  type LeadPriority,
-  type LeadStage,
-} from '@velo/shared';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -142,41 +136,16 @@ export function LeadsPage() {
       {
         accessorKey: 'priority',
         header: 'Priority',
-        cell: ({ getValue }) => {
-          const p = String(getValue() ?? 'WARM');
-          const tone =
-            p === 'HOT' ? 'danger' : p === 'WARM' ? 'warning' : 'neutral';
-          return (
-            <Badge tone={tone}>
-              {LEAD_PRIORITY_LABELS[p as LeadPriority] ?? p}
-            </Badge>
-          );
-        },
+        cell: ({ getValue }) => (
+          <LeadPriorityBadge priority={String(getValue() ?? 'WARM')} />
+        ),
       },
       {
         accessorKey: 'stage',
         header: 'Stage',
-        cell: ({ getValue }) => {
-          const stage = String(getValue());
-          const tone =
-            stage === 'INCOMING'
-              ? 'new'
-              : stage === 'PROSPECT'
-                ? 'accent'
-                : stage === 'OPPORTUNITY'
-                  ? 'warning'
-                  : stage === 'BOOKED'
-                    ? 'success'
-                    : stage === 'LOST' || stage === 'UNQUALIFIED'
-                      ? 'danger'
-                      : 'neutral';
-          return (
-            <Badge tone={tone}>
-              {LEAD_STAGE_LABELS[stage as LeadStage] ??
-                stage.replace(/_/g, ' ')}
-            </Badge>
-          );
-        },
+        cell: ({ getValue }) => (
+          <LeadStageBadge stage={String(getValue())} />
+        ),
       },
       {
         accessorKey: 'createdAt',
