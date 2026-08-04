@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, LoginResponse } from '@velo/shared';
 import { ApiClientError, apiFetch, registerAuthRefresh } from '@/lib/api';
+import { applyTenantBrand } from '@/lib/brand';
 
 type TenantInfo = LoginResponse['tenant'];
 
@@ -47,14 +48,17 @@ export const useAuthStore = create<AuthState>()(
       impersonation: null,
       adminSession: null,
       sessionReady: false,
-      setSession: (payload) =>
+      setSession: (payload) => {
+        applyTenantBrand(payload.tenant);
         set({
           user: payload.user,
           tenant: payload.tenant,
           accessToken: payload.tokens.accessToken,
           sessionReady: true,
-        }),
-      clear: () =>
+        });
+      },
+      clear: () => {
+        applyTenantBrand(null);
         set({
           user: null,
           tenant: null,
@@ -62,12 +66,14 @@ export const useAuthStore = create<AuthState>()(
           impersonation: null,
           adminSession: null,
           sessionReady: true,
-        }),
+        });
+      },
       login: async (email, password) => {
         const data = await apiFetch<LoginResponse>('/api/auth/login', {
           method: 'POST',
           body: JSON.stringify({ email, password }),
         });
+        applyTenantBrand(data.tenant);
         set({
           user: data.user,
           tenant: data.tenant,
@@ -171,7 +177,8 @@ export const useAuthStore = create<AuthState>()(
         impersonation: s.impersonation,
         adminSession: s.adminSession,
       }),
-      onRehydrateStorage: () => () => {
+      onRehydrateStorage: () => (state) => {
+        if (state?.tenant) applyTenantBrand(state.tenant);
         void useAuthStore.getState().bootstrap();
       },
     },

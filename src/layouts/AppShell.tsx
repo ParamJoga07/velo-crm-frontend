@@ -26,6 +26,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, type ComponentType } from 'react';
 import { apiFetch } from '@/lib/api';
+import { applyTenantBrand, productNameFromTenant } from '@/lib/brand';
 
 const ADMIN_NAV = [
   {
@@ -66,7 +67,7 @@ const ADMIN_NAV = [
   },
   {
     to: '/company',
-    label: 'Company profile',
+    label: 'Company settings',
     icon: Building2,
     roles: ['SUPERADMIN', 'MANAGER'],
   },
@@ -99,6 +100,7 @@ const ADMIN_NAV = [
 export function AppShell() {
   const { user, tenant, accessToken, logout, impersonation, stopImpersonation } =
     useAuthStore();
+  const productName = productNameFromTenant(tenant);
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -125,27 +127,12 @@ export function AppShell() {
     if (!accessToken) return;
     const refreshTenant = () => {
       void apiFetch<{
-        tenant: {
-          id: string;
-          name: string;
-          timezone: string;
-          leadBalance: number;
-          leadLimit?: number;
-          leadsUsed?: number;
-        };
+        tenant: NonNullable<ReturnType<typeof useAuthStore.getState>['tenant']>;
       }>('/api/auth/me', { accessToken })
         .then((me) => {
           if (me?.tenant) {
-            useAuthStore.setState({
-              tenant: {
-                id: me.tenant.id,
-                name: me.tenant.name,
-                timezone: me.tenant.timezone,
-                leadBalance: me.tenant.leadBalance,
-                leadLimit: me.tenant.leadLimit,
-                leadsUsed: me.tenant.leadsUsed,
-              },
-            });
+            useAuthStore.setState({ tenant: me.tenant });
+            applyTenantBrand(me.tenant);
           }
         })
         .catch(() => undefined);
@@ -298,11 +285,11 @@ export function AppShell() {
             type="button"
             onClick={() => navigate(landing)}
             className="mb-2 flex h-10 w-10 items-center justify-center overflow-hidden rounded-md bg-navy-muted/40 ring-1 ring-white/10"
-            title="Velo CRM"
+            title={productName}
           >
             <img
               src="/velo-logo.png"
-              alt="Velo"
+              alt={productName}
               className="h-8 w-8 object-contain"
             />
           </button>
@@ -375,7 +362,9 @@ export function AppShell() {
                     alt=""
                     className="h-8 w-8 rounded-md bg-navy object-contain p-0.5"
                   />
-                  <span className="text-sm font-semibold text-navy">Velo</span>
+                  <span className="text-sm font-semibold text-navy">
+                    {productName}
+                  </span>
                 </div>
                 <Button
                   variant="ghost"
@@ -413,7 +402,7 @@ export function AppShell() {
             >
               <img
                 src="/velo-logo.png"
-                alt="Velo"
+                alt={productName}
                 className="h-7 w-7 rounded object-contain"
               />
             </button>
@@ -431,25 +420,39 @@ export function AppShell() {
                 {tenant.name}
               </span>
               {!isUser ? (
-                <span
-                  className="hidden rounded border border-border bg-surface px-2 py-1 font-mono text-[10px] text-muted-foreground sm:inline sm:text-[11px]"
-                  title={
-                    tenant.leadLimit != null && tenant.leadsUsed != null
-                      ? `Limit ${tenant.leadLimit.toLocaleString()} − imported ${tenant.leadsUsed.toLocaleString()} = remaining ${tenant.leadBalance.toLocaleString()}`
-                      : 'Remaining lead quota'
-                  }
-                >
-                  <span className="hidden md:inline">Lead balance: </span>
-                  <span className="font-semibold text-navy">
-                    {tenant.leadBalance.toLocaleString()}
-                  </span>
-                  {tenant.leadLimit != null ? (
-                    <span className="text-muted-foreground">
-                      {' '}
-                      / {tenant.leadLimit.toLocaleString()}
+                <>
+                  <span
+                    className="hidden rounded border border-border bg-surface px-2 py-1 font-mono text-[10px] text-muted-foreground sm:inline sm:text-[11px]"
+                    title="Active seats vs plan limit"
+                  >
+                    Seats{' '}
+                    <span className="font-semibold text-navy">
+                      {tenant.seatsUsed ?? '—'}
                     </span>
-                  ) : null}
-                </span>
+                    {tenant.seatLimit != null ? (
+                      <span> / {tenant.seatLimit}</span>
+                    ) : null}
+                  </span>
+                  <span
+                    className="hidden rounded border border-border bg-surface px-2 py-1 font-mono text-[10px] text-muted-foreground sm:inline sm:text-[11px]"
+                    title={
+                      tenant.leadLimit != null && tenant.leadsUsed != null
+                        ? `Limit ${tenant.leadLimit.toLocaleString()} − imported ${tenant.leadsUsed.toLocaleString()} = remaining ${tenant.leadBalance.toLocaleString()}`
+                        : 'Remaining lead quota'
+                    }
+                  >
+                    <span className="hidden md:inline">Lead balance: </span>
+                    <span className="font-semibold text-navy">
+                      {tenant.leadBalance.toLocaleString()}
+                    </span>
+                    {tenant.leadLimit != null ? (
+                      <span className="text-muted-foreground">
+                        {' '}
+                        / {tenant.leadLimit.toLocaleString()}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
               ) : null}
               <Button
                 variant="ghost"

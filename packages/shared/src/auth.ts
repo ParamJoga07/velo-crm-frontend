@@ -35,6 +35,14 @@ export const LoginResponseSchema = z.object({
     leadBalance: z.number().int(),
     leadLimit: z.number().int().optional(),
     leadsUsed: z.number().int().optional(),
+    planCode: z.string().optional(),
+    seatLimit: z.number().int().optional(),
+    seatsUsed: z.number().int().optional(),
+    brandProductName: z.string().nullable().optional(),
+    brandPrimary: z.string().nullable().optional(),
+    brandSecondary: z.string().nullable().optional(),
+    brandAccent: z.string().nullable().optional(),
+    brandSidebar: z.string().nullable().optional(),
   }),
 });
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
