@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,13 @@ import { TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
-import {
-  normalizeListEnvelope,
-  type ListEnvelope,
-} from '@/hooks/useTablePagination';
 
 type Profile = {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  email: string | null;
+  phone: string | null;
   permanentAddress: string | null;
   presentAddress: string | null;
   parentsName: string | null;
@@ -31,6 +29,7 @@ type Profile = {
   bankAccount: string | null;
   bankIfsc: string | null;
   dateOfBirth: string | null;
+  userId: string | null;
   user: {
     id: string;
     name: string;
@@ -43,22 +42,14 @@ type Profile = {
 
 type Employee = {
   id: string;
+  userId: string | null;
   name: string;
   email: string;
   phone: string | null;
-  role: string;
+  designation: string | null;
+  role: string | null;
   team: { id: string; name: string } | null;
-  employeeProfile: Profile | null;
-};
-
-type UserRow = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  role: string;
-  isActive: boolean;
-  team: { id: string; name: string } | null;
+  hasLogin: boolean;
 };
 
 function toDateInput(v: string | null | undefined) {
@@ -76,8 +67,14 @@ export function HrmsPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [addOpen, setAddOpen] = useState(false);
-  const [userQuery, setUserQuery] = useState('');
-  const [pickedUserId, setPickedUserId] = useState('');
+  const [newEmp, setNewEmp] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    designation: '',
+    joiningDate: '',
+  });
 
   const employees = useQuery({
     queryKey: ['hrms-employees'],
@@ -85,50 +82,24 @@ export function HrmsPage() {
     queryFn: () => apiFetch<Employee[]>('/api/hrms/employees', { accessToken }),
   });
 
-  const directoryUsers = useQuery({
-    queryKey: ['users', 'hrms-picker'],
-    enabled: isManager && addOpen,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await apiFetch<ListEnvelope<UserRow>>(
-        '/api/users?limit=100&page=1',
-        { accessToken },
-      );
-      return normalizeListEnvelope(res);
-    },
-  });
-
-  const suggestions = useMemo(() => {
-    const listed = new Set((employees.data ?? []).map((e) => e.id));
-    const q = userQuery.trim().toLowerCase();
-    return (directoryUsers.data?.data ?? [])
-      .filter((u) => u.isActive)
-      .filter((u) => !listed.has(u.id) || !employees.data?.find((e) => e.id === u.id)?.employeeProfile)
-      .filter(
-        (u) =>
-          !q ||
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          (u.team?.name ?? '').toLowerCase().includes(q),
-      )
-      .slice(0, 12);
-  }, [directoryUsers.data, employees.data, userQuery]);
-
-  const targetId = isManager ? selectedId ?? myId ?? null : myId ?? null;
-
   useEffect(() => {
-    if (isManager && !selectedId && myId) setSelectedId(myId);
-  }, [isManager, selectedId, myId]);
+    if (!isManager || selectedId) return;
+    const rows = employees.data ?? [];
+    const mine = rows.find((e) => e.userId === myId);
+    setSelectedId(mine?.id ?? rows[0]?.id ?? null);
+  }, [isManager, selectedId, employees.data, myId]);
 
   const profile = useQuery({
-    queryKey: ['hrms-profile', targetId],
-    enabled: !!targetId,
+    queryKey: ['hrms-profile', isManager ? selectedId : myId],
+    enabled: isManager ? !!selectedId : !!myId,
     queryFn: () =>
       apiFetch<Profile>(
-        targetId === myId ? '/api/hrms/me' : `/api/hrms/employees/${targetId}`,
+        isManager ? `/api/hrms/employees/${selectedId}` : '/api/hrms/me',
         { accessToken },
       ),
   });
+
+  const targetId = profile.data?.id ?? selectedId;
 
   useEffect(() => {
     const p = profile.data;
@@ -136,8 +107,8 @@ export function HrmsPage() {
     setForm({
       firstName: p.firstName ?? '',
       lastName: p.lastName ?? '',
-      phone: p.user.phone ?? '',
-      email: p.user.email ?? '',
+      phone: p.phone ?? p.user.phone ?? '',
+      email: p.email ?? p.user.email ?? '',
       designation: p.designation ?? '',
       permanentAddress: p.permanentAddress ?? '',
       presentAddress: p.presentAddress ?? '',
@@ -181,28 +152,39 @@ export function HrmsPage() {
       }),
     onSuccess: () => {
       setError(null);
-      void qc.invalidateQueries({ queryKey: ['hrms-profile', targetId] });
+      void qc.invalidateQueries({ queryKey: ['hrms-profile'] });
       void qc.invalidateQueries({ queryKey: ['hrms-employees'] });
     },
     onError: (e: Error) => setError(e.message),
   });
 
   const addEmployee = useMutation({
-    mutationFn: async (userId: string) => {
-      // GET creates profile if missing (get-or-create on backend)
-      await apiFetch<Profile>(`/api/hrms/employees/${userId}`, {
+    mutationFn: () =>
+      apiFetch<Employee>('/api/hrms/employees', {
+        method: 'POST',
         accessToken,
-      });
-      return userId;
-    },
-    onSuccess: (userId) => {
+        body: JSON.stringify({
+          firstName: newEmp.firstName.trim(),
+          lastName: newEmp.lastName.trim() || null,
+          email: newEmp.email.trim(),
+          phone: newEmp.phone.trim() || null,
+          designation: newEmp.designation.trim() || null,
+          joiningDate: newEmp.joiningDate || null,
+        }),
+      }),
+    onSuccess: (created) => {
       setAddOpen(false);
-      setUserQuery('');
-      setPickedUserId('');
-      setSelectedId(userId);
+      setNewEmp({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        designation: '',
+        joiningDate: '',
+      });
+      setSelectedId(created.id);
       setError(null);
       void qc.invalidateQueries({ queryKey: ['hrms-employees'] });
-      void qc.invalidateQueries({ queryKey: ['hrms-profile', userId] });
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -221,7 +203,7 @@ export function HrmsPage() {
     <div className="space-y-4">
       <PageHeader
         title="HRMS"
-        description="Employee profiles linked to User Management accounts"
+        description="Add employees here first, then grant CRM login in User Management"
         actions={
           isManager ? (
             <div className="flex gap-2">
@@ -236,7 +218,7 @@ export function HrmsPage() {
                 to="/admin/users"
                 className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-primary hover:bg-surface-muted"
               >
-                User Management →
+                Grant CRM login →
               </Link>
             </div>
           ) : undefined
@@ -251,80 +233,89 @@ export function HrmsPage() {
 
       {addOpen && isManager ? (
         <section className="rounded-md border border-border bg-surface-raised p-4 shadow-panel">
-          <h2 className="text-sm font-semibold text-navy">
-            Add employee from User Management
-          </h2>
+          <h2 className="text-sm font-semibold text-navy">Add employee</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Search and select an existing user — do not type names manually.
+            Create the person in HRMS first. Then open User Management to grant
+            a CRM login and add them to a team.
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <Label>Search</Label>
+              <Label>First name</Label>
               <Input
                 className="mt-1.5"
-                placeholder="Name, email, or team…"
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                autoFocus
+                value={newEmp.firstName}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, firstName: e.target.value })
+                }
               />
             </div>
             <div>
-              <Label>Select user</Label>
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-                value={pickedUserId}
-                onChange={(e) => setPickedUserId(e.target.value)}
-              >
-                <option value="">Choose…</option>
-                {suggestions.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} · {u.email}
-                    {u.team ? ` · ${u.team.name}` : ''}
-                  </option>
-                ))}
-              </select>
+              <Label>Last name</Label>
+              <Input
+                className="mt-1.5"
+                value={newEmp.lastName}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, lastName: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                className="mt-1.5"
+                type="email"
+                value={newEmp.email}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, email: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                className="mt-1.5"
+                value={newEmp.phone}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, phone: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Designation</Label>
+              <Input
+                className="mt-1.5"
+                placeholder="e.g. Sales Executive"
+                value={newEmp.designation}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, designation: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Joining date</Label>
+              <Input
+                className="mt-1.5"
+                type="date"
+                value={newEmp.joiningDate}
+                onChange={(e) =>
+                  setNewEmp({ ...newEmp, joiningDate: e.target.value })
+                }
+              />
             </div>
             <div className="flex items-end">
               <Button
                 className="w-full"
-                disabled={!pickedUserId || addEmployee.isPending}
-                onClick={() => addEmployee.mutate(pickedUserId)}
+                disabled={
+                  addEmployee.isPending ||
+                  !newEmp.firstName.trim() ||
+                  !newEmp.email.trim()
+                }
+                onClick={() => addEmployee.mutate()}
               >
-                {addEmployee.isPending ? 'Adding…' : 'Open profile'}
+                {addEmployee.isPending ? 'Adding…' : 'Create employee'}
               </Button>
             </div>
           </div>
-          {userQuery.trim() && suggestions.length > 0 ? (
-            <ul className="mt-3 max-h-40 space-y-1 overflow-auto rounded-md border border-border p-2">
-              {suggestions.map((u) => (
-                <li key={u.id}>
-                  <button
-                    type="button"
-                    className={cn(
-                      'w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-muted',
-                      pickedUserId === u.id && 'bg-primary-muted',
-                    )}
-                    onClick={() => setPickedUserId(u.id)}
-                  >
-                    <span className="font-medium text-navy">{u.name}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {u.email}
-                      {u.team ? ` · ${u.team.name}` : ''} · {u.role}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {!directoryUsers.isLoading && suggestions.length === 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              No matching users.{' '}
-              <Link to="/admin/users" className="text-primary underline">
-                Create them in User Management
-              </Link>{' '}
-              first.
-            </p>
-          ) : null}
         </section>
       ) : null}
 
@@ -352,7 +343,7 @@ export function HrmsPage() {
                     >
                       <div className="text-navy">{u.name}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        {u.role}
+                        {u.designation || (u.hasLogin ? u.role : 'No CRM login')}
                         {u.team ? ` · ${u.team.name}` : ''}
                       </div>
                     </button>
@@ -363,9 +354,16 @@ export function HrmsPage() {
           </aside>
         ) : null}
 
+
         <div className="min-w-0">
           {profile.isLoading ? (
             <TableSkeleton rows={8} />
+          ) : !profile.data ? (
+            <p className="rounded-lg border border-border bg-surface-raised p-6 text-sm text-muted-foreground">
+              {isManager
+                ? 'No employees yet. Use Add employee to create someone in HRMS first.'
+                : 'Your HR profile is not available yet.'}
+            </p>
           ) : (
             <form
               onSubmit={onSubmit}
@@ -458,7 +456,15 @@ export function HrmsPage() {
                 </FormSection>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {isManager && !profile.data.userId ? (
+                  <Link
+                    to="/admin/users"
+                    className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium text-primary hover:bg-surface-muted"
+                  >
+                    Grant CRM login
+                  </Link>
+                ) : null}
                 <Button type="submit" disabled={save.isPending || !targetId}>
                   {save.isPending ? 'Saving…' : 'Save profile'}
                 </Button>

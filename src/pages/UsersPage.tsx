@@ -28,6 +28,18 @@ type UserRow = {
   createdAt: string;
 };
 
+type HrmsEmployee = {
+  id: string;
+  userId: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  designation: string | null;
+  role: string | null;
+  team: { id: string; name: string } | null;
+  hasLogin: boolean;
+};
+
 type TeamRow = {
   id: string;
   name: string;
@@ -80,14 +92,13 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [resetInfo, setResetInfo] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
   const [userForm, setUserForm] = useState({
-    name: '',
-    email: '',
+    employeeId: '',
     password: 'Password123!',
     role: 'USER',
     teamId: '',
-    phone: '',
   });
   const [teamForm, setTeamForm] = useState({
     name: '',
@@ -105,7 +116,8 @@ export function UsersPage() {
     isActive: true,
   });
   const [memberForm, setMemberForm] = useState({
-    existingUserId: '',
+    employeeId: '',
+    password: 'Password123!',
     asManager: false,
   });
 
@@ -133,16 +145,11 @@ export function UsersPage() {
     },
   });
 
-  const allUsersQuery = useQuery({
-    queryKey: ['users', 'all-dropdown'],
-    staleTime: 120_000,
-    queryFn: async () => {
-      const res = await apiFetch<ListEnvelope<UserRow>>(
-        '/api/users?limit=100&page=1',
-        { accessToken },
-      );
-      return normalizeListEnvelope(res);
-    },
+  const hrmsEmployees = useQuery({
+    queryKey: ['hrms-employees'],
+    staleTime: 60_000,
+    queryFn: () =>
+      apiFetch<HrmsEmployee[]>('/api/hrms/employees', { accessToken }),
   });
 
   const teamsQuery = useQuery({
@@ -177,28 +184,25 @@ export function UsersPage() {
 
   const createUser = useMutation({
     mutationFn: () =>
-      apiFetch('/api/users', {
+      apiFetch('/api/users/from-employee', {
         method: 'POST',
         accessToken,
         body: JSON.stringify({
-          name: userForm.name,
-          email: userForm.email,
+          employeeId: userForm.employeeId,
           password: userForm.password,
           role: userForm.role,
-          phone: userForm.phone || null,
           teamId: userForm.teamId || selectedTeamId || null,
         }),
       }),
     onSuccess: () => {
       setShowUserForm(false);
       setUserForm({
-        name: '',
-        email: '',
+        employeeId: '',
         password: 'Password123!',
         role: 'USER',
         teamId: '',
-        phone: '',
       });
+      setEmployeeSearch('');
       setError(null);
       invalidateAll();
     },
@@ -290,17 +294,26 @@ export function UsersPage() {
   });
 
   const addMember = useMutation({
-    mutationFn: () =>
-      apiFetch(`/api/users/teams/${selectedTeamId}/members`, {
+    mutationFn: () => {
+      const emp = (hrmsEmployees.data ?? []).find(
+        (e) => e.id === memberForm.employeeId,
+      );
+      return apiFetch(`/api/users/teams/${selectedTeamId}/members`, {
         method: 'POST',
         accessToken,
         body: JSON.stringify({
-          userId: memberForm.existingUserId,
+          employeeId: memberForm.employeeId,
           asManager: memberForm.asManager,
+          ...(!emp?.hasLogin ? { password: memberForm.password } : {}),
         }),
-      }),
+      });
+    },
     onSuccess: () => {
-      setMemberForm({ existingUserId: '', asManager: false });
+      setMemberForm({
+        employeeId: '',
+        password: 'Password123!',
+        asManager: false,
+      });
       setMemberSearch('');
       setError(null);
       invalidateAll();
@@ -316,20 +329,34 @@ export function UsersPage() {
     return map;
   }, [teamDetail.data]);
 
-  const unassignedUsers = useMemo(() => {
+  const unassignedEmployees = useMemo(() => {
     const rosterIds = new Set(
       (teamDetail.data?.roster ?? []).map((r) => r.id),
     );
     const q = memberSearch.trim().toLowerCase();
-    return (allUsersQuery.data?.data ?? [])
-      .filter((u) => !rosterIds.has(u.id) && u.isActive)
-      .filter(
-        (u) =>
-          !q ||
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q),
+    return (hrmsEmployees.data ?? []).filter((e) => {
+      if (e.userId && rosterIds.has(e.userId)) return false;
+      if (!q) return true;
+      return (
+        e.name.toLowerCase().includes(q) ||
+        e.email.toLowerCase().includes(q) ||
+        (e.designation ?? '').toLowerCase().includes(q)
       );
-  }, [allUsersQuery.data, teamDetail.data, memberSearch]);
+    });
+  }, [hrmsEmployees.data, teamDetail.data, memberSearch]);
+
+  const employeesWithoutLogin = useMemo(() => {
+    const q = employeeSearch.trim().toLowerCase();
+    return (hrmsEmployees.data ?? []).filter((e) => {
+      if (e.hasLogin) return false;
+      if (!q) return true;
+      return (
+        e.name.toLowerCase().includes(q) ||
+        e.email.toLowerCase().includes(q) ||
+        (e.designation ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [hrmsEmployees.data, employeeSearch]);
 
   type RosterRow = TeamDetail['roster'][number];
 
@@ -522,7 +549,7 @@ export function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="User Management"
-        description="Create teams, assign agents from the user list, and manage access"
+        description="Grant CRM logins to HRMS employees and assign them to teams"
         actions={
           <div className="flex gap-2">
             <Button
@@ -547,7 +574,7 @@ export function UsersPage() {
                 }
               }}
             >
-              {showUserForm ? 'Cancel' : 'Add user'}
+              {showUserForm ? 'Cancel' : 'Add from HRMS'}
             </Button>
           </div>
         }
@@ -607,32 +634,74 @@ export function UsersPage() {
 
       {showUserForm ? (
         <section className="rounded-md border border-border bg-surface-raised dark:border-[#0e1117] p-4 shadow-panel">
-          <h2 className="text-sm font-semibold text-navy">Create user</h2>
+          <h2 className="text-sm font-semibold text-navy">
+            Add user from HRMS
+          </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            New accounts are created here once. Assign them to teams from the
-            team roster (select existing users — no typing names).
+            Pick an employee created in HRMS, then set a password, role, and
+            team. Names are not typed here.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <Label>Name</Label>
+              <Label>Search employees</Label>
               <Input
                 className="mt-1.5"
-                value={userForm.name}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, name: e.target.value })
-                }
+                placeholder="Name, email, or designation…"
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
               />
             </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                className="mt-1.5"
-                value={userForm.email}
+            <div className="sm:col-span-2">
+              <Label>Select employee</Label>
+              <select
+                className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                value={userForm.employeeId}
                 onChange={(e) =>
-                  setUserForm({ ...userForm, email: e.target.value })
+                  setUserForm({ ...userForm, employeeId: e.target.value })
                 }
-              />
+              >
+                <option value="">Choose an HRMS employee…</option>
+                {employeesWithoutLogin.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} · {e.email}
+                    {e.designation ? ` · ${e.designation}` : ''}
+                  </option>
+                ))}
+              </select>
+              {employeesWithoutLogin.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No employees waiting for a login.{' '}
+                  <Link to="/hrms" className="text-primary underline">
+                    Add them in HRMS
+                  </Link>{' '}
+                  first.
+                </p>
+              ) : null}
             </div>
+            {employeeSearch.trim() && employeesWithoutLogin.length > 0 ? (
+              <ul className="sm:col-span-2 lg:col-span-3 max-h-36 space-y-1 overflow-auto rounded-md border border-border p-2">
+                {employeesWithoutLogin.slice(0, 12).map((e) => (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      className={cn(
+                        'w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-muted',
+                        userForm.employeeId === e.id && 'bg-primary-muted',
+                      )}
+                      onClick={() =>
+                        setUserForm({ ...userForm, employeeId: e.id })
+                      }
+                    >
+                      <span className="font-medium text-navy">{e.name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {e.email}
+                        {e.designation ? ` · ${e.designation}` : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <div>
               <Label>Password</Label>
               <Input
@@ -678,10 +747,10 @@ export function UsersPage() {
             <div className="flex items-end">
               <Button
                 className="w-full"
-                disabled={createUser.isPending}
+                disabled={createUser.isPending || !userForm.employeeId}
                 onClick={() => createUser.mutate()}
               >
-                Create user
+                Grant CRM login
               </Button>
             </div>
           </div>
@@ -960,14 +1029,15 @@ export function UsersPage() {
 
               <div className="mt-4 border-t border-border pt-4">
                 <h3 className="text-sm font-semibold text-navy">
-                  Add member from User Management
+                  Add member from HRMS
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Pick an existing user — names are not typed manually.
+                  Pick an employee from HRMS. If they do not have a CRM login
+                  yet, set a password to grant one.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <Label>Search users</Label>
+                    <Label>Search employees</Label>
                     <Input
                       className="mt-1.5"
                       placeholder="Filter by name or email…"
@@ -976,32 +1046,58 @@ export function UsersPage() {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label>Select user</Label>
+                    <Label>Select employee</Label>
                     <select
                       className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-                      value={memberForm.existingUserId}
+                      value={memberForm.employeeId}
                       onChange={(e) =>
                         setMemberForm({
                           ...memberForm,
-                          existingUserId: e.target.value,
+                          employeeId: e.target.value,
                         })
                       }
                     >
-                      <option value="">Choose a user…</option>
-                      {unassignedUsers.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} · {u.email}
-                          {u.team ? ` · ${u.team.name}` : ''}
+                      <option value="">Choose an HRMS employee…</option>
+                      {unassignedEmployees.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name} · {e.email}
+                          {e.hasLogin ? '' : ' · needs login'}
+                          {e.team ? ` · ${e.team.name}` : ''}
                         </option>
                       ))}
                     </select>
-                    {unassignedUsers.length === 0 ? (
+                    {unassignedEmployees.length === 0 ? (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        No available users. Create one with “Add user”, then
-                        assign them here.
+                        No available employees.{' '}
+                        <Link to="/hrms" className="text-primary underline">
+                          Add them in HRMS
+                        </Link>{' '}
+                        first.
                       </p>
                     ) : null}
                   </div>
+                  {(() => {
+                    const picked = unassignedEmployees.find(
+                      (e) => e.id === memberForm.employeeId,
+                    );
+                    if (!picked || picked.hasLogin) return null;
+                    return (
+                      <div>
+                        <Label>Password (new CRM login)</Label>
+                        <Input
+                          type="password"
+                          className="mt-1.5"
+                          value={memberForm.password}
+                          onChange={(e) =>
+                            setMemberForm({
+                              ...memberForm,
+                              password: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-end gap-3">
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -1019,7 +1115,7 @@ export function UsersPage() {
                     <Button
                       className="ml-auto"
                       disabled={
-                        addMember.isPending || !memberForm.existingUserId
+                        addMember.isPending || !memberForm.employeeId
                       }
                       onClick={() => addMember.mutate()}
                     >

@@ -35,6 +35,16 @@ export const CreateUserSchema = z.object({
 });
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
+export const CreateUserFromEmployeeSchema = z.object({
+  employeeId: z.string().uuid(),
+  password: z.string().min(8).max(128),
+  role: z.enum(['SUPERADMIN', 'MANAGER', 'USER']).default('USER'),
+  teamId: z.string().uuid().optional().nullable(),
+});
+export type CreateUserFromEmployeeInput = z.infer<
+  typeof CreateUserFromEmployeeSchema
+>;
+
 export const UpdateUserSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   role: z.enum(['SUPERADMIN', 'MANAGER', 'USER']).optional(),
@@ -59,6 +69,7 @@ export type UpdateTeamInput = z.infer<typeof UpdateTeamSchema>;
 
 export const AddTeamMemberSchema = z.object({
   userId: z.string().uuid().optional(),
+  employeeId: z.string().uuid().optional(),
   // Or create a new user directly into the team
   name: z.string().min(1).max(120).optional(),
   email: z.string().email().optional(),
