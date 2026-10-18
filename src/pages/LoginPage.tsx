@@ -80,7 +80,12 @@ export function LoginPage() {
             <img
               src="/velo-logo.png"
               alt="VeloSphere"
-              className="h-16 w-auto object-contain drop-shadow-[0_8px_24px_rgba(148,188,227,0.28)]"
+              className={cn(
+                'h-28 w-auto object-contain sm:h-32',
+                theme === 'dark'
+                  ? 'rounded-2xl bg-white/95 p-3 shadow-[0_8px_32px_rgba(148,188,227,0.35)]'
+                  : 'drop-shadow-[0_8px_24px_rgba(148,188,227,0.28)]',
+              )}
             />
           </Link>
 

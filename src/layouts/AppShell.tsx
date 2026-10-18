@@ -279,11 +279,11 @@ export function AppShell() {
         </div>
       ) : (
         <div className="border-b border-border px-3 py-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-2 flex items-start justify-between gap-2">
             <img
               src="/velo-logo.png"
               alt={productName}
-              className="h-7 w-auto object-contain"
+              className="h-20 w-auto object-contain dark:rounded-md dark:bg-white dark:p-1.5"
             />
             {onToggleCompact ? (
               <button
@@ -563,7 +563,7 @@ export function AppShell() {
               <img
                 src="/velo-logo.png"
                 alt={productName}
-                className="h-7 w-auto max-w-[140px] object-contain"
+                className="h-10 w-auto max-w-[140px] object-contain dark:rounded dark:bg-white dark:p-0.5"
               />
             </button>
 
