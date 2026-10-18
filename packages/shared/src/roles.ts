@@ -5,40 +5,84 @@ export type Role = z.infer<typeof RoleSchema>;
 
 export const LeadStageSchema = z.enum([
   'INCOMING',
+  'CONTACTED',
   'PROSPECT',
-  'OPPORTUNITY',
-  'UNQUALIFIED',
-  'BOOKED',
+  'DNP1',
+  'DNP2',
+  'DNP3',
+  'WON',
   'LOST',
 ]);
 export type LeadStage = z.infer<typeof LeadStageSchema>;
 
+/** Lost reasons under Deal → Lost. */
+export const LOST_REASONS = [
+  'Not Interested',
+  'Invalid Number',
+  'Already Invested',
+  'DNP / Call Not Answered',
+] as const;
+export type LostReason = (typeof LOST_REASONS)[number];
+
+/** "Did not pick" ladder, in the order a lead walks down it. */
+export const DNP_STAGES = ['DNP1', 'DNP2', 'DNP3'] as const;
+export type DnpStage = (typeof DNP_STAGES)[number];
+
+/**
+ * Next rung on the DNP ladder for a lead that did not pick up again.
+ * Anything before DNP1 starts at DNP1; DNP3 is the bottom and stays put.
+ */
+export function nextDnpStage(stage: LeadStage): DnpStage {
+  const at = DNP_STAGES.indexOf(stage as DnpStage);
+  if (at < 0) return 'DNP1';
+  return DNP_STAGES[Math.min(at + 1, DNP_STAGES.length - 1)];
+}
+
 export const LeadPrioritySchema = z.enum(['HOT', 'WARM', 'COLD']);
 export type LeadPriority = z.infer<typeof LeadPrioritySchema>;
 
+/**
+ * Hot / Warm / Cold only mean something once a lead is qualified, so the field
+ * is surfaced as "Prospect" and is editable on PROSPECT leads only.
+ */
+export const PROSPECT_FIELD_LABEL = 'Prospect';
+
+export function isProspectRatingEditable(stage: string): boolean {
+  return stage === 'PROSPECT';
+}
+
 export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   INCOMING: 'Incoming',
+  CONTACTED: 'Contacted',
   PROSPECT: 'Prospect',
-  OPPORTUNITY: 'Opportunity',
-  UNQUALIFIED: 'Unqualified',
-  BOOKED: 'Booked',
+  DNP1: 'DNP 1',
+  DNP2: 'DNP 2',
+  DNP3: 'DNP 3',
+  WON: 'Won',
   LOST: 'Lost',
 };
 
-/** Distinct list colors for each lead stage */
+/**
+ * Stage tints, ordered as a health gradient down the pipeline:
+ * blue (fresh) -> green (qualified) -> amber/orange/rose (fading) -> slate (dead).
+ */
 export const LEAD_STAGE_COLORS: Record<LeadStage, string> = {
   INCOMING:
     'border-sky-600/40 bg-sky-500/15 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/20 dark:text-sky-200',
+  CONTACTED:
+    'border-indigo-600/40 bg-indigo-500/15 text-indigo-800 dark:border-indigo-400/30 dark:bg-indigo-500/20 dark:text-indigo-200',
   PROSPECT:
-    'border-violet-600/40 bg-violet-500/15 text-violet-800 dark:border-violet-400/30 dark:bg-violet-500/20 dark:text-violet-200',
-  OPPORTUNITY:
-    'border-amber-600/40 bg-amber-500/15 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/20 dark:text-amber-200',
-  UNQUALIFIED:
-    'border-slate-500/40 bg-slate-500/15 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/20 dark:text-slate-200',
-  BOOKED:
     'border-emerald-600/40 bg-emerald-500/15 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-200',
-  LOST:
+  DNP1:
+    'border-amber-600/40 bg-amber-500/15 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/20 dark:text-amber-200',
+  DNP2:
+    'border-orange-600/40 bg-orange-500/15 text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/20 dark:text-orange-200',
+  DNP3:
     'border-rose-600/40 bg-rose-500/15 text-rose-800 dark:border-rose-400/30 dark:bg-rose-500/20 dark:text-rose-200',
+  WON:
+    'border-teal-600/40 bg-teal-500/15 text-teal-800 dark:border-teal-400/30 dark:bg-teal-500/20 dark:text-teal-200',
+  LOST:
+    'border-slate-500/40 bg-slate-500/15 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/20 dark:text-slate-200',
 };
 
 export const LEAD_PRIORITY_LABELS: Record<LeadPriority, string> = {
@@ -68,6 +112,8 @@ export const ACTIVITY_TYPES = [
   'TASK_COMPLETED',
   'LEAD_OPENED',
   'VIEW_NO_ACTION',
+  'CALL_INITIATED',
+  'DID_NOT_PICK',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
@@ -156,4 +202,73 @@ export function isAvailableOnDay(
   day: WeekDay = weekDayFromDate(),
 ): boolean {
   return normalizeWeekAvailability(workingHours)[day] !== false;
+}
+
+export const PROJECT_NAMES = [
+  'Ananda Homes',
+  'Sri Developers',
+  'Muppas',
+  'Team 4 Nyla',
+  'Team 4 Arka',
+  'Team 4 Aria',
+  'Anvita High 9',
+  'Esshanya Miliarium',
+  'Divine Spaces',
+  'Prestige',
+  'Candeur',
+  'Prosperti Akam',
+  'Primark',
+  'Urban Rise',
+  'Vian',
+  'Vajrainfra',
+  'RV Nirman',
+  'ASBL',
+  'Cybercity',
+  'AR Homes',
+  'Ira Aspiration',
+  'E-Infra',
+  'Zuari',
+  'Myron',
+  'Ramky One Symphony',
+  'Hallmark',
+  'Indis Myra Villas',
+  'Constella',
+  'GreenSpace Marvel',
+  'Maharaja',
+  'Arkala',
+  'Bliss in the Woods',
+  'Swasthi By Sarus',
+  'Sunshine',
+  'Trilight',
+  'Tridasa',
+  'Cloudswood',
+] as const;
+
+export const MEETING_STATUSES = ['BOOKED', 'COMPLETED', 'CANCELLED'] as const;
+export type MeetingStatus = (typeof MEETING_STATUSES)[number];
+
+export const MEETING_STATUS_LABELS: Record<string, string> = {
+  BOOKED: 'Booked',
+  SCHEDULED: 'Booked',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  NO_SHOW: 'Cancelled',
+};
+
+/**
+ * Completed-meeting points: owner alone = 1.0; owner + one taker = 0.5 / 0.5;
+ * owner + several takers = 0.5 to owner and the remaining 0.5 split equally.
+ */
+export function allocateMeetingPoints(
+  ownerId: string,
+  takerIds: string[],
+): Record<string, number> {
+  const takers = [...new Set(takerIds.filter(Boolean))];
+  if (!takers.length) return { [ownerId]: 1 };
+  const others = takers.filter((id) => id !== ownerId);
+  if (!others.length) return { [ownerId]: 1 };
+  const share = 0.5 / others.length;
+  const out: Record<string, number> = { [ownerId]: 0.5 };
+  for (const id of others) out[id] = share;
+  return out;
 }

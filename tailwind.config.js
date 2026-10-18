@@ -49,7 +49,7 @@ export default {
       },
       spacing: {
         rail: '56px',
-        sidebar: '228px',
+        sidebar: '200px',
         topbar: '48px',
       },
       boxShadow: {

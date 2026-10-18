@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import { cn } from '@/lib/utils';
 import {
   normalizeListEnvelope,
@@ -30,6 +31,7 @@ type UserRow = {
 
 type HrmsEmployee = {
   id: string;
+  employeeNumber?: number;
   userId: string | null;
   name: string;
   email: string;
@@ -83,6 +85,7 @@ export function UsersPage() {
   const me = useAuthStore((s) => s.user);
   const startImpersonation = useAuthStore((s) => s.startImpersonation);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showUserForm, setShowUserForm] = useState(false);
@@ -415,12 +418,19 @@ export function UsersPage() {
             <button
               type="button"
               className="text-xs text-danger hover:underline"
-              onClick={() =>
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Remove ${row.original.name}?`,
+                  description: 'They leave this team but remain as a user.',
+                  confirmLabel: 'Remove',
+                  variant: 'danger',
+                });
+                if (!ok) return;
                 void apiFetch(
                   `/api/users/teams/${selectedTeamId}/members/${row.original.id}`,
                   { method: 'DELETE', accessToken },
-                ).then(invalidateAll)
-              }
+                ).then(invalidateAll);
+              }}
             >
               Remove
             </button>
@@ -428,7 +438,7 @@ export function UsersPage() {
         ),
       },
     ],
-    [attendanceByUser, selectedTeamId, accessToken],
+    [attendanceByUser, selectedTeamId, accessToken, confirm],
   );
 
   const columns: ColumnDef<UserRow>[] = [
@@ -623,7 +633,15 @@ export function UsersPage() {
               <Button
                 className="w-full"
                 disabled={!teamForm.name || createTeam.isPending}
-                onClick={() => createTeam.mutate()}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Create this team?',
+                    description: `“${teamForm.name}” will be added under ${teamForm.departmentName || 'Sales'}.`,
+                    confirmLabel: 'Create',
+                  });
+                  if (!ok) return;
+                  createTeam.mutate();
+                }}
               >
                 Create team
               </Button>
@@ -663,6 +681,7 @@ export function UsersPage() {
                 <option value="">Choose an HRMS employee…</option>
                 {employeesWithoutLogin.map((e) => (
                   <option key={e.id} value={e.id}>
+                    {e.employeeNumber != null ? `#${e.employeeNumber} · ` : ''}
                     {e.name} · {e.email}
                     {e.designation ? ` · ${e.designation}` : ''}
                   </option>
@@ -748,7 +767,15 @@ export function UsersPage() {
               <Button
                 className="w-full"
                 disabled={createUser.isPending || !userForm.employeeId}
-                onClick={() => createUser.mutate()}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Grant CRM login?',
+                    description: 'This creates a login for the selected HRMS employee.',
+                    confirmLabel: 'Grant login',
+                  });
+                  if (!ok) return;
+                  createUser.mutate();
+                }}
               >
                 Grant CRM login
               </Button>
@@ -843,7 +870,15 @@ export function UsersPage() {
               <Button
                 className="flex-1"
                 disabled={updateUser.isPending}
-                onClick={() => updateUser.mutate()}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Save user changes?',
+                    description: `Update ${editingUser.name}’s role, team, and status.`,
+                    confirmLabel: 'Save',
+                  });
+                  if (!ok) return;
+                  updateUser.mutate();
+                }}
               >
                 Save changes
               </Button>
@@ -852,14 +887,15 @@ export function UsersPage() {
                   variant="secondary"
                   className="text-danger"
                   disabled={deleteUser.isPending}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        `Deactivate and remove ${editingUser.name} from teams?`,
-                      )
-                    ) {
-                      return;
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Delete ${editingUser.name}?`,
+                      description:
+                        'Deactivate this user and remove them from teams.',
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                    });
+                    if (!ok) return;
                     deleteUser.mutate(editingUser.id);
                   }}
                 >
@@ -967,7 +1003,15 @@ export function UsersPage() {
                       <Button
                         size="sm"
                         disabled={updateTeam.isPending}
-                        onClick={() => updateTeam.mutate()}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Save team changes?',
+                            description: 'This updates the team name and department.',
+                            confirmLabel: 'Save',
+                          });
+                          if (!ok) return;
+                          updateTeam.mutate();
+                        }}
                       >
                         Save team
                       </Button>
@@ -994,14 +1038,15 @@ export function UsersPage() {
                           variant="secondary"
                           className="text-danger"
                           disabled={deleteTeam.isPending}
-                          onClick={() => {
-                            if (
-                              !window.confirm(
-                                `Delete team “${teamDetail.data.name}”? Members stay as users but leave this team.`,
-                              )
-                            ) {
-                              return;
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: `Delete team “${teamDetail.data.name}”?`,
+                              description:
+                                'Members stay as users but leave this team.',
+                              confirmLabel: 'Delete team',
+                              variant: 'danger',
+                            });
+                            if (!ok) return;
                             deleteTeam.mutate();
                           }}
                         >
@@ -1060,6 +1105,7 @@ export function UsersPage() {
                       <option value="">Choose an HRMS employee…</option>
                       {unassignedEmployees.map((e) => (
                         <option key={e.id} value={e.id}>
+                          {e.employeeNumber != null ? `#${e.employeeNumber} · ` : ''}
                           {e.name} · {e.email}
                           {e.hasLogin ? '' : ' · needs login'}
                           {e.team ? ` · ${e.team.name}` : ''}
@@ -1117,7 +1163,14 @@ export function UsersPage() {
                       disabled={
                         addMember.isPending || !memberForm.employeeId
                       }
-                      onClick={() => addMember.mutate()}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Add this employee to the team?',
+                          confirmLabel: 'Add',
+                        });
+                        if (!ok) return;
+                        addMember.mutate();
+                      }}
                     >
                       Add to team
                     </Button>

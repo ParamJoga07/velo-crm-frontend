@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import {
   LEAD_PRIORITY_LABELS,
+  PROSPECT_FIELD_LABEL,
+  isProspectRatingEditable,
   LEAD_STAGE_LABELS,
   type LeadPriority,
   type LeadStage,
@@ -89,6 +91,8 @@ export function LeadCreatePage() {
     create.mutate();
   };
 
+  if (role === 'USER') return <Navigate to="/leads" replace />;
+
   const set =
     (key: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -171,11 +175,12 @@ export function LeadCreatePage() {
             <Input className="mt-1" value={form.source} onChange={set('source')} />
           </div>
           <div>
-            <Label>Priority</Label>
+            <Label>{PROSPECT_FIELD_LABEL}</Label>
             <select
-              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               value={form.priority}
               onChange={set('priority')}
+              disabled={!isProspectRatingEditable(form.stage)}
             >
               {PRIORITIES.map((p) => (
                 <option key={p} value={p}>
@@ -183,6 +188,11 @@ export function LeadCreatePage() {
                 </option>
               ))}
             </select>
+            {!isProspectRatingEditable(form.stage) ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Available once the stage is Prospect.
+              </p>
+            ) : null}
           </div>
           <div>
             <Label>Stage</Label>
@@ -198,23 +208,22 @@ export function LeadCreatePage() {
               ))}
             </select>
           </div>
-          {role !== 'USER' ? (
-            <div>
-              <Label>Assign to</Label>
-              <select
-                className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-                value={form.assignedToId}
-                onChange={set('assignedToId')}
-              >
-                <option value="">Unassigned</option>
-                {(users.data ?? []).map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
+          {/* USER role is redirected above, so this is always shown here. */}
+          <div>
+            <Label>Assign to</Label>
+            <select
+              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+              value={form.assignedToId}
+              onChange={set('assignedToId')}
+            >
+              <option value="">Unassigned</option>
+              {(users.data ?? []).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="md:col-span-2">
             <Label>Remarks</Label>
             <textarea

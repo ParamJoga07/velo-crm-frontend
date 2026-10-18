@@ -35,6 +35,7 @@ function isPaginatedEnvelope(
 function isAuthPath(path: string) {
   return (
     path.includes('/api/auth/login') ||
+    path.includes('/api/auth/forgot-password') ||
     path.includes('/api/auth/refresh') ||
     path.includes('/api/auth/logout')
   );
@@ -88,4 +89,71 @@ export async function apiFetch<T>(
   }
 
   return json.data as T;
+}
+
+/**
+ * Fire-and-forget POST that survives the page/route teardown that triggered it
+ * (used for the "opened but nothing saved" signal). Respects API_BASE, which a
+ * bare fetch() to a relative path would not when the API is on another origin.
+ */
+export function apiBeacon(
+  path: string,
+  init: { accessToken?: string | null; body?: unknown } = {},
+): void {
+  void fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.accessToken ? { Authorization: `Bearer ${init.accessToken}` } : {}),
+    },
+    body: JSON.stringify(init.body ?? {}),
+  }).catch(() => undefined);
+}
+
+/**
+ * POSTs a request whose response is a file and hands it to the browser as a
+ * download. Used by bulk "export selected" actions, which stream a spreadsheet
+ * back directly instead of going through the queued export jobs.
+ */
+export async function apiDownload(
+  path: string,
+  init: {
+    accessToken?: string | null;
+    body?: unknown;
+    fallbackFileName?: string;
+  } = {},
+): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.accessToken ? { Authorization: `Bearer ${init.accessToken}` } : {}),
+    },
+    body: JSON.stringify(init.body ?? {}),
+  });
+
+  if (!res.ok) {
+    // Errors still come back as the usual JSON envelope.
+    const json = (await res.json().catch(() => null)) as ApiEnvelope<unknown> | null;
+    throw new ApiClientError(
+      json?.error?.code ?? 'HTTP_ERROR',
+      json?.error?.message ?? res.statusText,
+      res.status,
+    );
+  }
+
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^"]+)"?/.exec(disposition);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = match?.[1] ?? init.fallbackFileName ?? 'download';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

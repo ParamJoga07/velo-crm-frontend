@@ -74,19 +74,17 @@ export function ImportUploadPage() {
   });
 
   const options = optionsQuery.data as Options | undefined;
-  const teams = useMemo(() => {
-    const all = options?.teams ?? [];
-    if (!departmentId) return all;
-    return all.filter((t) => t.departmentId === departmentId);
-  }, [options?.teams, departmentId]);
+  const teams = options?.teams ?? [];
+  const hasTeams = teams.length > 0;
 
   const teamSalesUsers = useMemo(() => {
     const all = options?.salesUsers ?? [];
-    if (!teamId) return [];
-    return all.filter(
+    if (!teamId || !hasTeams) return all;
+    const inTeam = all.filter(
       (u) => u.teamId === teamId || (u.teamIds ?? []).includes(teamId),
     );
-  }, [options?.salesUsers, teamId]);
+    return inTeam.length ? inTeam : all;
+  }, [options?.salesUsers, teamId, hasTeams]);
 
   const perUserEstimate = useMemo(() => {
     if (!salesUserIds.length || !preview?.rows?.length) return null;
@@ -98,14 +96,10 @@ export function ImportUploadPage() {
   }, [preview?.rows?.length, salesUserIds.length]);
 
   useEffect(() => {
-    if (!teamId) {
-      setSalesUserIds([]);
-      return;
-    }
     const allowed = new Set(teamSalesUsers.map((u) => u.id));
     setSalesUserIds((prev) => prev.filter((id) => allowed.has(id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-filter when team changes
-  }, [teamId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, hasTeams]);
 
   useEffect(() => {
     if (!file) {
@@ -137,8 +131,7 @@ export function ImportUploadPage() {
     !!file &&
     !!preview &&
     (apiType !== 'LEADS' ||
-      (!!teamId &&
-        salesUserIds.length > 0 &&
+      (salesUserIds.length > 0 &&
         Object.values(mapping).includes('name') &&
         Object.values(mapping).includes('phone')));
 
@@ -244,13 +237,15 @@ export function ImportUploadPage() {
           </div>
 
           <div>
-            <Label>Team *</Label>
+            <Label>Team{hasTeams ? '' : ' (optional)'}</Label>
             <select
               className="mt-1.5 h-9 w-full rounded-md border border-input bg-surface-raised px-3 text-sm"
               value={teamId}
               onChange={(e) => {
                 setTeamId(e.target.value);
                 setSalesUserIds([]);
+                const team = teams.find((t) => t.id === e.target.value);
+                if (team?.departmentId) setDepartmentId(team.departmentId);
               }}
             >
               <option value="">Select team</option>
@@ -260,13 +255,21 @@ export function ImportUploadPage() {
                 </option>
               ))}
             </select>
-            <FieldHint>Sales names below are members of this team only.</FieldHint>
+            <FieldHint>
+              {optionsQuery.isLoading
+                ? 'Loading teams…'
+                : optionsQuery.isError
+                  ? 'Could not load teams. Refresh and try again.'
+                  : hasTeams
+                    ? 'Optional. Sales names below include every user; picking a team only highlights that group.'
+                    : 'No teams yet — assign leads to any user below.'}
+            </FieldHint>
           </div>
 
           <div className="md:col-span-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Sales names * (multi-select)</Label>
-              {teamId && teamSalesUsers.length > 0 ? (
+              {teamSalesUsers.length > 0 ? (
                 <div className="flex gap-2 text-xs">
                   <button
                     type="button"
@@ -285,13 +288,9 @@ export function ImportUploadPage() {
                 </div>
               ) : null}
             </div>
-            {!teamId ? (
+            {teamSalesUsers.length === 0 ? (
               <p className="mt-1.5 rounded-md border border-border bg-surface px-3 py-4 text-sm text-muted-foreground">
-                Select a team first to see its users.
-              </p>
-            ) : teamSalesUsers.length === 0 ? (
-              <p className="mt-1.5 rounded-md border border-border bg-surface px-3 py-4 text-sm text-muted-foreground">
-                No active users in this team. Add members under User Management.
+                No active sales users found. Add people under User Management.
               </p>
             ) : (
               <div className="mt-1.5 max-h-44 overflow-auto rounded-md border border-input bg-surface-raised p-2">
@@ -329,7 +328,25 @@ export function ImportUploadPage() {
           </div>
 
           <div>
-            <Label>Project</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Project</Label>
+              {(options?.projects ?? []).length > 0 ? (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => {
+                    const ids = (options?.projects ?? []).map((p) => p.id);
+                    setProjectIds(
+                      projectIds.length === ids.length ? [] : ids,
+                    );
+                  }}
+                >
+                  {projectIds.length === (options?.projects ?? []).length
+                    ? 'Clear'
+                    : `Select all (${options?.projects.length ?? 0})`}
+                </button>
+              ) : null}
+            </div>
             <select
               multiple
               className="mt-1.5 h-28 w-full rounded-md border border-input bg-surface-raised px-3 py-2 text-sm"

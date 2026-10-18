@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { useAuthHasHydrated, useAuthStore } from '@/stores/auth';
 import { AppShell } from '@/layouts/AppShell';
+import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { LeadsPage } from '@/pages/LeadsPage';
 import { LeadDetailPage } from '@/pages/LeadDetailPage';
@@ -16,7 +17,9 @@ import { LeavePage } from '@/pages/LeavePage';
 import { HrmsPage } from '@/pages/HrmsPage';
 import { CompanyPage } from '@/pages/CompanyPage';
 import { PerformancePage } from '@/pages/PerformancePage';
-import { DocumentsPage } from '@/pages/DocumentsPage';
+import { LeadRegistrationsPage } from '@/pages/LeadRegistrationsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { PayrollPage } from '@/pages/PayrollPage';
 import { LeadSettingsPage } from '@/pages/LeadSettingsPage';
 import { ExportsPage } from '@/pages/ExportsPage';
 import { ReassignPage } from '@/pages/ReassignPage';
@@ -37,10 +40,6 @@ function RequireAuth() {
   return <Outlet />;
 }
 
-function RoleHome() {
-  return <Navigate to="/dashboard" replace />;
-}
-
 function DashboardRoute() {
   const role = useAuthStore((s) => s.user?.role);
   if (role === 'USER') return <AgentDashboardPage />;
@@ -53,21 +52,32 @@ function RequireImportRole() {
   return <Outlet />;
 }
 
+function RequireLeadCreateRole() {
+  const role = useAuthStore((s) => s.user?.role);
+  if (role === 'USER') return <Navigate to="/leads" replace />;
+  return <Outlet />;
+}
+
 export function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          <Route index element={<RoleHome />} />
           <Route path="dashboard" element={<DashboardRoute />} />
           <Route path="leads" element={<LeadsPage />} />
-          <Route path="leads/new" element={<LeadCreatePage />} />
+          <Route element={<RequireLeadCreateRole />}>
+            <Route path="leads/new" element={<LeadCreatePage />} />
+          </Route>
           <Route path="leads/:id" element={<LeadDetailPage />} />
           <Route path="performance" element={<PerformancePage />} />
+          <Route path="lead-registrations" element={<LeadRegistrationsPage />} />
+          <Route path="meetings" element={<Navigate to="/lead-registrations" replace />} />
           <Route path="leave" element={<LeavePage />} />
           <Route path="hrms" element={<HrmsPage />} />
-          <Route path="documents" element={<DocumentsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="documents" element={<HrmsPage />} />
           <Route path="company" element={<CompanyPage />} />
           <Route path="admin/attendance" element={<AttendancePage />} />
           <Route element={<RequireImportRole />}>
@@ -81,6 +91,11 @@ export function App() {
             <Route path="admin/lead-settings" element={<LeadSettingsPage />} />
             <Route path="admin/exports" element={<ExportsPage />} />
             <Route path="admin/reassign" element={<ReassignPage />} />
+            <Route
+              path="admin/lead-registrations"
+              element={<Navigate to="/lead-registrations" replace />}
+            />
+            <Route path="admin/payroll" element={<PayrollPage />} />
           </Route>
         </Route>
       </Route>

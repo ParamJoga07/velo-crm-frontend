@@ -8,12 +8,14 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { LeadStageBadge } from '@/components/LeadStatusBadges';
+import { LeadPhoneLink } from '@/components/LeadPhoneLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { DataTable, TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -52,6 +54,7 @@ type HistoryRow = {
 
 export function ReassignPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toUserId, setToUserId] = useState('');
@@ -134,16 +137,19 @@ export function ReassignPage() {
       {
         id: 'select',
         header: () => (
-          <input
-            type="checkbox"
-            aria-label="Select all"
-            checked={allIds.length > 0 && selected.size === allIds.length}
-            onChange={() =>
-              setSelected(
-                selected.size === allIds.length ? new Set() : new Set(allIds),
-              )
-            }
-          />
+          <label className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
+            <input
+              type="checkbox"
+              aria-label="Select all"
+              checked={allIds.length > 0 && selected.size === allIds.length}
+              onChange={() =>
+                setSelected(
+                  selected.size === allIds.length ? new Set() : new Set(allIds),
+                )
+              }
+            />
+            All
+          </label>
         ),
         cell: ({ row }) => (
           <input
@@ -164,9 +170,11 @@ export function ReassignPage() {
         cell: ({ row }) => (
           <div>
             <div className="font-medium text-navy">{row.original.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {row.original.phone}
-            </div>
+            <LeadPhoneLink
+              leadId={row.original.id}
+              phone={row.original.phone}
+              className="text-xs"
+            />
           </div>
         ),
       },
@@ -278,7 +286,15 @@ export function ReassignPage() {
             <Button
               className="w-full"
               disabled={!toUserId || selected.size === 0 || mutate.isPending}
-              onClick={() => mutate.mutate()}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Reassign ${selected.size} lead${selected.size === 1 ? '' : 's'}?`,
+                  description: 'Ownership will move to the selected user.',
+                  confirmLabel: 'Reassign',
+                });
+                if (!ok) return;
+                mutate.mutate();
+              }}
             >
               Reassign {selected.size || ''} selected
             </Button>
@@ -317,7 +333,7 @@ export function ReassignPage() {
                 )
               }
             >
-              {selected.size === allIds.length ? 'Clear all' : 'Select page'}
+              {selected.size === allIds.length ? 'Clear all' : `Select all (${allIds.length})`}
             </button>
           </div>
         </div>

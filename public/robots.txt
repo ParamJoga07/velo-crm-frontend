@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /dashboard
+Disallow: /leads
+Disallow: /performance
+Disallow: /leave
+Disallow: /hrms
+Disallow: /documents
+Disallow: /company
+Disallow: /admin
+
+Sitemap: https://velospherecrm.com/sitemap.xml

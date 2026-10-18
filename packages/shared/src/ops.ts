@@ -1,13 +1,15 @@
 import { z } from 'zod';
+import { LeadStageSchema } from './roles';
 
 export const CreateExportJobSchema = z.object({
   entity: z.enum(['LEADS']).default('LEADS'),
   format: z.enum(['CSV', 'XLSX']).default('XLSX'),
-  stage: z.string().optional().nullable(),
+  stage: LeadStageSchema.optional().nullable(),
   source: z.string().optional().nullable(),
   assignedToId: z.string().uuid().optional().nullable(),
   teamId: z.string().uuid().optional().nullable(),
   notifyEmail: z.string().email().optional().nullable(),
+  removeAfterExport: z.boolean().optional().default(false),
 });
 export type CreateExportJobInput = z.infer<typeof CreateExportJobSchema>;
 

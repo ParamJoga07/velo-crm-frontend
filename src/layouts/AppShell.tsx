@@ -1,101 +1,166 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Building2,
+  Calculator,
   CalendarDays,
-  CalendarOff,
+  ChevronDown,
+  ClipboardCheck,
   Download,
-  FileText,
   FileUp,
   HelpCircle,
   LayoutDashboard,
   LogOut,
   Menu,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Search,
   Settings2,
   Sun,
   Target,
   Users,
+  Wallet,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/NotificationBell';
+import { AiChatWidget } from '@/components/AiChatWidget';
+import { WelcomeGreeting } from '@/components/WelcomeGreeting';
+import { SaleBanner } from '@/components/SaleBanner';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, type ComponentType } from 'react';
 import { apiFetch } from '@/lib/api';
 import { applyTenantBrand, productNameFromTenant } from '@/lib/brand';
 
-const ADMIN_NAV = [
+const NAV_GROUPS: {
+  heading?: string;
+  items: {
+    to: string;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+    roles: readonly string[];
+  }[];
+}[] = [
   {
-    to: '/performance',
-    label: 'Performance',
-    icon: Target,
-    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+    items: [
+      {
+        to: '/performance',
+        label: 'Performance',
+        icon: Target,
+        roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+      },
+      {
+        to: '/lead-registrations',
+        label: 'Lead Registration',
+        icon: ClipboardCheck,
+        roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+      },
+      {
+        to: '/admin/users',
+        label: 'User Management',
+        icon: Users,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+    ],
   },
   {
-    to: '/admin/users',
-    label: 'User Management',
-    icon: Users,
-    roles: ['SUPERADMIN', 'MANAGER'],
+    heading: 'People & Operations',
+    items: [
+      {
+        to: '/hrms',
+        label: 'HRMS',
+        icon: Users,
+        roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+      },
+      {
+        to: '/admin/attendance',
+        label: 'Attendance & Leaves',
+        icon: CalendarDays,
+        roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+      },
+    ],
   },
   {
-    to: '/admin/attendance',
-    label: 'Attendance & Availability',
-    icon: CalendarDays,
-    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+    items: [
+      {
+        to: '/company',
+        label: 'Company Settings',
+        icon: Building2,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/settings',
+        label: 'Settings',
+        icon: Settings2,
+        roles: ['USER'],
+      },
+    ],
   },
   {
-    to: '/leave',
-    label: 'Leave',
-    icon: CalendarOff,
-    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
+    heading: 'Quick Actions',
+    items: [
+      {
+        to: '/admin/imports',
+        label: 'Import / Export',
+        icon: FileUp,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/admin/exports',
+        label: 'Reports',
+        icon: Download,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/admin/reassign',
+        label: 'Reassign Leads',
+        icon: RefreshCw,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/admin/payroll',
+        label: 'Payroll Calculator',
+        icon: Calculator,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/performance?tab=sales',
+        label: 'Sales & Targets',
+        icon: Wallet,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+      {
+        to: '/admin/lead-settings',
+        label: 'Lead Settings',
+        icon: Settings2,
+        roles: ['SUPERADMIN', 'MANAGER'],
+      },
+    ],
   },
-  {
-    to: '/hrms',
-    label: 'HRMS',
-    icon: Users,
-    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
-  },
-  {
-    to: '/documents',
-    label: 'Documents',
-    icon: FileText,
-    roles: ['SUPERADMIN', 'MANAGER', 'USER'],
-  },
-  {
-    to: '/company',
-    label: 'Company settings',
-    icon: Building2,
-    roles: ['SUPERADMIN', 'MANAGER'],
-  },
-  {
-    to: '/admin/imports',
-    label: 'Imports',
-    icon: FileUp,
-    roles: ['SUPERADMIN', 'MANAGER'],
-  },
-  {
-    to: '/admin/exports',
-    label: 'Exports',
-    icon: Download,
-    roles: ['SUPERADMIN', 'MANAGER'],
-  },
-  {
-    to: '/admin/reassign',
-    label: 'Reassign Leads',
-    icon: RefreshCw,
-    roles: ['SUPERADMIN', 'MANAGER'],
-  },
-  {
-    to: '/admin/lead-settings',
-    label: 'Lead Settings',
-    icon: Settings2,
-    roles: ['SUPERADMIN', 'MANAGER'],
-  },
-] as const;
+];
+
+const SIDEBAR_COLLAPSED_KEY = 'velo.sidebarCollapsed';
+const NAV_GROUPS_COLLAPSED_KEY = 'velo.navGroupsCollapsed';
+
+function readStored<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function AppShell() {
   const { user, tenant, accessToken, logout, impersonation, stopImpersonation } =
@@ -105,6 +170,25 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => readStored<boolean>(SIDEBAR_COLLAPSED_KEY) ?? false,
+  );
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >(() => readStored<Record<string, boolean>>(NAV_GROUPS_COLLAPSED_KEY) ?? {});
+
+  const toggleSidebar = () =>
+    setSidebarCollapsed((prev) => {
+      writeStored(SIDEBAR_COLLAPSED_KEY, !prev);
+      return !prev;
+    });
+
+  const toggleGroup = (heading: string) =>
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [heading]: !prev[heading] };
+      writeStored(NAV_GROUPS_COLLAPSED_KEY, next);
+      return next;
+    });
 
   useEffect(() => {
     setNavOpen(false);
@@ -152,15 +236,17 @@ export function AppShell() {
 
   const isUser = user.role === 'USER';
   const landing = '/dashboard';
-  const visibleNav = ADMIN_NAV.filter((item) =>
-    (item.roles as readonly string[]).includes(user.role),
-  );
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.roles.includes(user.role)),
+  })).filter((group) => group.items.length > 0);
 
   const mobilePrimary = isUser
     ? ([
         { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
         { to: '/leads', label: 'Leads', icon: Building2 },
-        { to: '/admin/attendance', label: 'Attendance', icon: CalendarDays },
+        { to: '/lead-registrations', label: 'Register', icon: ClipboardCheck },
+        { to: '/admin/attendance', label: 'Attend.', icon: CalendarDays },
       ] as const)
     : ([
         { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -169,57 +255,118 @@ export function AppShell() {
         { to: '/admin/attendance', label: 'Attend.', icon: CalendarDays },
       ] as const);
 
-  const NavBody = ({ onNavigate }: { onNavigate?: () => void }) => (
+  const NavBody = ({
+    onNavigate,
+    compact = false,
+    onToggleCompact,
+  }: {
+    onNavigate?: () => void;
+    compact?: boolean;
+    onToggleCompact?: () => void;
+  }) => (
     <>
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {isUser ? 'Workspace' : 'Administration'}
-        </p>
-        <p className="mt-0.5 text-sm font-semibold text-navy">
-          {isUser ? 'My Console' : 'Ops Console'}
-        </p>
-      </div>
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {isUser ? (
-          <>
-            <SideLink
-              to="/dashboard"
-              label="My Dashboard"
-              icon={LayoutDashboard}
-              onNavigate={onNavigate}
+      {compact ? (
+        <div className="flex justify-center border-b border-border py-3">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-navy/70 hover:bg-surface-muted hover:text-navy"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+            onClick={onToggleCompact}
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="border-b border-border px-3 py-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <img
+              src="/velo-logo.png"
+              alt={productName}
+              className="h-7 w-auto object-contain"
             />
-            <SideLink
-              to="/leads"
-              label="My Leads"
-              icon={Building2}
-              onNavigate={onNavigate}
-            />
-          </>
-        ) : (
-          <>
-            <SideLink
-              to="/dashboard"
-              label="Dashboard"
-              icon={LayoutDashboard}
-              onNavigate={onNavigate}
-            />
-            <SideLink
-              to="/leads"
-              label="All Leads"
-              icon={Building2}
-              onNavigate={onNavigate}
-            />
-          </>
+            {onToggleCompact ? (
+              <button
+                type="button"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-navy/70 hover:bg-surface-muted hover:text-navy"
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                onClick={onToggleCompact}
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {isUser ? 'Workspace' : 'Administration'}
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-navy">
+            {isUser ? 'My Console' : 'Ops Console'}
+          </p>
+        </div>
+      )}
+      <nav
+        className={cn(
+          'flex flex-1 flex-col gap-0.5 overflow-y-auto',
+          compact ? 'items-center px-1.5 py-2' : 'p-2',
         )}
-        {visibleNav.map((item) => (
-          <SideLink
-            key={item.to}
-            to={item.to}
-            label={item.label}
-            icon={item.icon}
-            onNavigate={onNavigate}
-          />
-        ))}
+      >
+        <SideLink
+          to="/dashboard"
+          label="Dashboard"
+          icon={LayoutDashboard}
+          onNavigate={onNavigate}
+          compact={compact}
+        />
+        <SideLink
+          to="/leads"
+          label="Leads"
+          icon={Building2}
+          onNavigate={onNavigate}
+          compact={compact}
+        />
+        {visibleGroups.map((group) => {
+          const groupCollapsed =
+            !compact && !!group.heading && !!collapsedGroups[group.heading];
+          return (
+            <div
+              key={group.heading ?? group.items[0]?.to}
+              className={cn(
+                'mt-2 flex flex-col gap-0.5',
+                compact && 'w-full items-center border-t border-border pt-2',
+              )}
+            >
+              {group.heading && !compact ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-md px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-navy"
+                  aria-expanded={!groupCollapsed}
+                  onClick={() => toggleGroup(group.heading!)}
+                >
+                  {group.heading}
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform',
+                      groupCollapsed && '-rotate-90',
+                    )}
+                  />
+                </button>
+              ) : null}
+              {groupCollapsed
+                ? null
+                : group.items.map((item) => (
+                    <SideLink
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      onNavigate={onNavigate}
+                      compact={compact}
+                    />
+                  ))}
+            </div>
+          );
+        })}
       </nav>
       <div className="space-y-0.5 border-t border-border p-2 md:hidden">
         <button
@@ -252,6 +399,8 @@ export function AppShell() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
+      <WelcomeGreeting name={user.name} />
+      <SaleBanner />
       {impersonation ? (
         <div className="flex flex-wrap items-center justify-between gap-2 bg-amber-500 px-3 py-2 text-xs text-amber-950 sm:px-4 sm:text-sm">
           <span className="min-w-0">
@@ -288,7 +437,7 @@ export function AppShell() {
             title={productName}
           >
             <img
-              src="/velo-logo.png"
+              src="/velo-mark.png"
               alt={productName}
               className="h-8 w-8 object-contain"
             />
@@ -296,15 +445,20 @@ export function AppShell() {
           <RailIcon to="/dashboard" label="Dashboard" icon={LayoutDashboard} />
           <RailIcon to="/leads" label="Leads" icon={Building2} />
           <RailIcon
+            to="/lead-registrations"
+            label="Register"
+            icon={ClipboardCheck}
+          />
+          <RailIcon
             to="/admin/attendance"
             label="Attendance"
             icon={CalendarDays}
             hidden={!isUser}
           />
           <RailIcon
-            to="/admin/imports"
-            label="Admin"
-            icon={Settings2}
+            to="/performance"
+            label="Performance"
+            icon={Target}
             hidden={isUser}
           />
           <div className="mt-auto flex flex-col gap-1 pb-2">
@@ -336,10 +490,16 @@ export function AppShell() {
 
         {/* Desktop sidebar */}
         <aside
-          className="hidden w-sidebar shrink-0 flex-col border-r border-border lg:flex"
+          className={cn(
+            'hidden shrink-0 flex-col border-r border-border transition-[width] duration-200 lg:flex',
+            sidebarCollapsed ? 'w-14' : 'w-sidebar',
+          )}
           style={{ background: 'var(--sidebar-bg)' }}
         >
-          <NavBody />
+          <NavBody
+            compact={sidebarCollapsed}
+            onToggleCompact={toggleSidebar}
+          />
         </aside>
 
         {/* Mobile drawer */}
@@ -358,9 +518,9 @@ export function AppShell() {
               <div className="flex items-center justify-between border-b border-border px-3 py-3">
                 <div className="flex items-center gap-2">
                   <img
-                    src="/velo-logo.png"
+                    src="/velo-mark.png"
                     alt=""
-                    className="h-8 w-8 rounded-md bg-navy object-contain p-0.5"
+                    className="h-8 w-8 object-contain"
                   />
                   <span className="text-sm font-semibold text-navy">
                     {productName}
@@ -403,7 +563,7 @@ export function AppShell() {
               <img
                 src="/velo-logo.png"
                 alt={productName}
-                className="h-7 w-7 rounded object-contain"
+                className="h-7 w-auto max-w-[140px] object-contain"
               />
             </button>
 
@@ -529,6 +689,7 @@ export function AppShell() {
           </nav>
         </div>
       </div>
+      <AiChatWidget />
     </div>
   );
 }
@@ -538,27 +699,41 @@ function SideLink({
   label,
   icon: Icon,
   onNavigate,
+  compact = false,
 }: {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
+  const location = useLocation();
+  const [pathname, query = ''] = to.split('?');
+  const search = query ? `?${query}` : '';
+  const active =
+    location.pathname === pathname &&
+    (search
+      ? location.search === search
+      : !location.search.includes('tab=documents'));
+
   return (
     <NavLink
       to={to}
       onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
-          'flex items-center gap-2 rounded-md px-2.5 py-2.5 text-[13px] transition-colors sm:py-2',
-          isActive
-            ? 'bg-primary-muted font-semibold text-primary-dark'
-            : 'text-navy/80 hover:bg-surface-muted',
-        )
-      }
+      title={compact ? label : undefined}
+      aria-label={compact ? label : undefined}
+      className={cn(
+        'flex items-center rounded-md text-[13px] transition-colors',
+        compact
+          ? 'h-9 w-9 justify-center'
+          : 'gap-2 px-2.5 py-2.5 sm:py-2',
+        active
+          ? 'bg-primary-muted font-semibold text-primary-dark'
+          : 'text-navy/80 hover:bg-surface-muted',
+      )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {label}
+      {compact ? null : label}
     </NavLink>
   );
 }

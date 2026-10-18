@@ -33,8 +33,7 @@ export function applyTenantBrand(tenant: TenantBrand | null | undefined) {
   const root = document.documentElement;
   const product =
     tenant?.brandProductName?.trim() ||
-    tenant?.name?.trim() ||
-    'Velo CRM';
+    'Velosphere';
 
   document.title = product;
 
@@ -80,9 +79,5 @@ export function applyTenantBrand(tenant: TenantBrand | null | undefined) {
 export function productNameFromTenant(
   tenant: TenantBrand | null | undefined,
 ): string {
-  return (
-    tenant?.brandProductName?.trim() ||
-    tenant?.name?.trim() ||
-    'Velo CRM'
-  );
+  return tenant?.brandProductName?.trim() || 'Velosphere';
 }

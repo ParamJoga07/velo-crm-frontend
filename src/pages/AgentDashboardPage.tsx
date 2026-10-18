@@ -25,6 +25,10 @@ type AgentDash = {
     missedFollowups: number;
     missedSiteVisits: number;
     myAssigned: number;
+    callsLogged?: number;
+    openFollowups?: number;
+    revenueAchieved?: number;
+    revenueTarget?: number;
   };
   todayAgenda: {
     id: string;
@@ -39,6 +43,13 @@ type AgentDash = {
     kind: string;
     scheduledAt: string;
     status: string;
+    lead: { id: string; name: string; phone: string } | null;
+  }[];
+  nextMeetings?: {
+    id: string;
+    title: string;
+    kind: string;
+    scheduledAt: string;
     lead: { id: string; name: string; phone: string } | null;
   }[];
 };
@@ -121,49 +132,45 @@ export function AgentDashboardPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <MetricCard
-          label="New Enquiries"
-          value={cards?.newEnquiries ?? 0}
-          to="/leads?smart=new"
+          label="Active leads"
+          value={cards?.myAssigned ?? 0}
+          to="/leads?mine=1"
           icon={UserPlus}
         />
         <MetricCard
-          label="Unread Emails"
-          value={cards?.unreadEmails ?? 0}
-          icon={Mail}
-        />
-        <MetricCard
-          label="Missed Calls"
-          value={cards?.missedCalls ?? 0}
-          icon={PhoneMissed}
-        />
-        <MetricCard
-          label="No Future Activity"
-          value={cards?.noFutureActivity ?? 0}
-          to="/leads?smart=no_future_activity"
-          accent
-          icon={AlertTriangle}
-        />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard
-          label="Re-engaged Leads"
-          value={cards?.reengagedLeads ?? 0}
-          icon={RefreshCw}
-        />
-        <MetricCard
-          label="Missed Followups"
-          value={cards?.missedFollowups ?? 0}
+          label="Follow-ups"
+          value={cards?.openFollowups ?? cards?.missedFollowups ?? 0}
           to="/leads?smart=missed_followups"
           accent
           icon={CalendarClock}
         />
         <MetricCard
-          label="Missed Site Visits"
-          value={cards?.missedSiteVisits ?? 0}
+          label="Calls logged"
+          value={cards?.callsLogged ?? 0}
+          icon={PhoneMissed}
+        />
+        <MetricCard
+          label="Target progress %"
+          value={
+            cards?.revenueTarget
+              ? Math.round(((cards.revenueAchieved ?? 0) / cards.revenueTarget) * 100)
+              : 0
+          }
+          icon={AlertTriangle}
+        />
+        <MetricCard
+          label="Next meetings"
+          value={query.data?.nextMeetings?.length ?? cards?.missedSiteVisits ?? 0}
           icon={MapPin}
+        />
+        <MetricCard
+          label="Overdue tasks"
+          value={cards?.missedFollowups ?? 0}
+          to="/leads?smart=missed_followups"
+          accent
+          icon={Mail}
         />
       </div>
 

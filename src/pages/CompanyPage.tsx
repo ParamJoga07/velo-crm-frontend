@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useState } from 'react';
 import {
@@ -14,7 +15,9 @@ import { TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { applyTenantBrand } from '@/lib/brand';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import { cn } from '@/lib/utils';
+import { DocumentLibrary } from '@/components/DocumentLibrary';
 
 type Company = {
   id: string;
@@ -44,7 +47,7 @@ type Company = {
   plan?: SubscriptionPlan;
 };
 
-type Tab = 'profile' | 'branding' | 'subscription';
+type Tab = 'profile' | 'branding' | 'subscription' | 'documents';
 
 function formatInr(n: number) {
   return new Intl.NumberFormat('en-IN', {
@@ -57,6 +60,7 @@ function formatInr(n: number) {
 export function CompanyPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.user?.role);
+  const confirm = useConfirm();
   const setTenantPartial = (patch: Record<string, unknown>) => {
     const current = useAuthStore.getState().tenant;
     if (!current) return;
@@ -66,7 +70,22 @@ export function CompanyPage() {
   };
   const canEdit = role === 'SUPERADMIN';
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>('profile');
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get('tab');
+  const tab: Tab =
+    tabParam === 'branding' ||
+    tabParam === 'subscription' ||
+    tabParam === 'documents'
+      ? tabParam
+      : 'profile';
+  const setTab = (next: Tab) => {
+    const copy = new URLSearchParams(params);
+    if (next === 'profile') copy.delete('tab');
+    else copy.set('tab', next);
+    setParams(copy, { replace: true });
+    setError(null);
+    setOkMsg(null);
+  };
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -189,13 +208,25 @@ export function CompanyPage() {
     onError: (e: Error) => setError(e.message),
   });
 
-  const onProfile = (e: FormEvent) => {
+  const onProfile = async (e: FormEvent) => {
     e.preventDefault();
+    const ok = await confirm({
+      title: 'Save company profile?',
+      description: 'This updates the company record used across the workspace.',
+      confirmLabel: 'Save',
+    });
+    if (!ok) return;
     saveProfile.mutate();
   };
 
-  const onBrand = (e: FormEvent) => {
+  const onBrand = async (e: FormEvent) => {
     e.preventDefault();
+    const ok = await confirm({
+      title: 'Save branding changes?',
+      description: 'Colours and product name will apply across the app.',
+      confirmLabel: 'Save',
+    });
+    if (!ok) return;
     saveBrand.mutate();
   };
 
@@ -206,7 +237,7 @@ export function CompanyPage() {
     <div className="space-y-4">
       <PageHeader
         title="Company settings"
-        description="Profile, subscription seats, and white-label branding"
+        description="Profile, subscription, branding, and company documents"
       />
 
       {error ? (
@@ -233,16 +264,13 @@ export function CompanyPage() {
             ['profile', 'Profile'],
             ['subscription', 'Subscription'],
             ['branding', 'Branding'],
+            ['documents', 'Documents'],
           ] as const
         ).map(([id, label]) => (
           <button
             key={id}
             type="button"
-            onClick={() => {
-              setTab(id);
-              setError(null);
-              setOkMsg(null);
-            }}
+            onClick={() => setTab(id)}
             className={cn(
               'rounded-t-md px-3 py-2 text-sm font-medium',
               tab === id
@@ -398,14 +426,14 @@ export function CompanyPage() {
                       size="sm"
                       variant={active ? 'secondary' : 'default'}
                       disabled={active || changePlan.isPending}
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Switch to ${plan.name} (${plan.seatLimit} seats)? Payment gateway can be wired later — this updates limits now.`,
-                          )
-                        ) {
-                          return;
-                        }
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Switch to ${plan.name}?`,
+                          description: `${plan.seatLimit} seats. Payment gateway can be wired later — this updates limits now.`,
+                          confirmLabel: 'Switch plan',
+                          variant: 'danger',
+                        });
+                        if (!ok) return;
                         changePlan.mutate(plan.code);
                       }}
                     >
@@ -421,6 +449,8 @@ export function CompanyPage() {
             (Razorpay/Stripe) can plug into the same plan codes later.
           </p>
         </div>
+      ) : tab === 'documents' ? (
+        <DocumentLibrary scope="company" />
       ) : (
         <form
           onSubmit={onBrand}
@@ -436,7 +466,7 @@ export function CompanyPage() {
               <Input
                 className="mt-1"
                 disabled={!canEdit}
-                placeholder="e.g. Acme Realty CRM"
+                placeholder="e.g. Velosphere"
                 value={brand.brandProductName}
                 onChange={(e) =>
                   setBrand({ ...brand, brandProductName: e.target.value })

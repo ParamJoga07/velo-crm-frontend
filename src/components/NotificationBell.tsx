@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,14 @@ type NotificationRow = {
   type: string;
   title: string;
   body: string;
-  meta: { count?: number; assignedAt?: string; fileName?: string } | null;
+  meta: {
+    count?: number;
+    assignedAt?: string;
+    fileName?: string;
+    href?: string;
+    registrationId?: string;
+    status?: string;
+  } | null;
   readAt: string | null;
   createdAt: string;
 };
@@ -20,6 +27,7 @@ type NotificationRow = {
 export function NotificationBell() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -110,6 +118,11 @@ export function NotificationBell() {
                   )}
                   onClick={() => {
                     if (!n.readAt) markOne.mutate(n.id);
+                    const href = n.meta?.href;
+                    if (href) {
+                      setOpen(false);
+                      navigate(href);
+                    }
                   }}
                 >
                   <div className="text-sm font-medium text-navy">{n.title}</div>

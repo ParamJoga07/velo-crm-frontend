@@ -41,6 +41,7 @@ type DataTableProps<T> = {
   pagination?: TablePagination;
   /** Scroll body under sticky header. Default fits typical CRM viewport. */
   maxHeightClass?: string;
+  cellClassName?: string;
 };
 
 export function DataTable<T>({
@@ -52,6 +53,7 @@ export function DataTable<T>({
   description,
   pagination,
   maxHeightClass = 'max-h-[min(58vh,calc(100dvh-15rem))] md:max-h-[calc(100dvh-14rem)]',
+  cellClassName,
 }: DataTableProps<T>) {
   const table = useReactTable({
     data,
@@ -97,6 +99,7 @@ export function DataTable<T>({
                     key={header.id}
                     className={cn(
                       tableCellClass,
+                      cellClassName,
                       'bg-table-header shadow-[inset_0_-1px_0_var(--color-table-border)] dark:shadow-[inset_0_-1px_0_#0e1117]',
                     )}
                   >
@@ -125,7 +128,7 @@ export function DataTable<T>({
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className={tableRowClass}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className={tableCellClass}>
+                    <td key={cell.id} className={cn(tableCellClass, cellClassName)}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

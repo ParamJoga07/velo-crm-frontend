@@ -15,6 +15,7 @@ import { DataTable, TableSkeleton } from '@/components/ui/data-table';
 import { apiFetch } from '@/lib/api';
 import { downloadWithAuth } from '@/lib/api-form';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -55,6 +56,7 @@ export function ImportHistoryPage() {
   const { type = 'leads' } = useParams();
   const apiType = type.toUpperCase().replace('-', '_');
   const accessToken = useAuthStore((s) => s.accessToken);
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
   const { page, limit, setPage, setLimit, resetPage } = useTablePagination(25);
@@ -230,10 +232,15 @@ export function ImportHistoryPage() {
                 <button
                   type="button"
                   className="block w-full rounded px-2 py-1.5 text-left text-xs text-danger hover:bg-surface-muted"
-                  onClick={() => {
-                    if (confirm('Delete this import job?')) {
-                      remove.mutate(row.original.id);
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Delete this import job?',
+                      description: 'The job record will be removed. Existing leads stay in the pipeline.',
+                      confirmLabel: 'Delete',
+                      variant: 'danger',
+                    });
+                    if (!ok) return;
+                    remove.mutate(row.original.id);
                   }}
                 >
                   Delete
@@ -244,7 +251,7 @@ export function ImportHistoryPage() {
         ),
       },
     ],
-    [remove, rerun],
+    [remove, rerun, confirm],
   );
 
   const rows = query.data?.data ?? [];

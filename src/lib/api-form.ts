@@ -48,3 +48,15 @@ export async function downloadWithAuth(path: string, fileName: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function openWithAuth(path: string) {
+  const token = useAuthStore.getState().accessToken;
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Could not open file');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}

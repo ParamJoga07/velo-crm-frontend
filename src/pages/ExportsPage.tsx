@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
+import { LEAD_STAGE_LABELS, type LeadStage } from '@velo/shared';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { DataTable, TableSkeleton } from '@/components/ui/data-table';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import {
   normalizeListEnvelope,
   useTablePagination,
@@ -36,6 +38,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 export function ExportsPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const confirm = useConfirm();
   const qc = useQueryClient();
   const [format, setFormat] = useState<'XLSX' | 'CSV'>('XLSX');
   const [stage, setStage] = useState('');
@@ -73,6 +76,7 @@ export function ExportsPage() {
           format,
           stage: stage || null,
           source: source || null,
+          removeAfterExport: Boolean(stage),
         }),
       }),
     onSuccess: () => {
@@ -164,12 +168,18 @@ export function ExportsPage() {
           </div>
           <div>
             <Label>Stage filter</Label>
-            <Input
-              className="mt-1.5"
-              placeholder="e.g. NEW"
+            <select
+              className="mt-1.5 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
               value={stage}
               onChange={(e) => setStage(e.target.value)}
-            />
+            >
+              <option value="">All stages (keep in CRM)</option>
+              {(Object.keys(LEAD_STAGE_LABELS) as LeadStage[]).map((s) => (
+                <option key={s} value={s}>
+                  {LEAD_STAGE_LABELS[s]}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label>Source filter</Label>
@@ -184,12 +194,30 @@ export function ExportsPage() {
             <Button
               className="w-full"
               disabled={create.isPending}
-              onClick={() => create.mutate()}
+              onClick={async () => {
+                if (stage) {
+                  const ok = await confirm({
+                    title: `Export and remove ${LEAD_STAGE_LABELS[stage as LeadStage] ?? stage} leads?`,
+                    description:
+                      'Those leads will be downloaded, then deleted from the CRM. This cannot be undone.',
+                    confirmLabel: 'Export & delete',
+                    variant: 'danger',
+                  });
+                  if (!ok) return;
+                }
+                create.mutate();
+              }}
             >
               {create.isPending ? 'Starting…' : 'Start export'}
             </Button>
           </div>
         </div>
+        {stage ? (
+          <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+            Exporting a stage removes those leads from the database after the
+            file is generated.
+          </p>
+        ) : null}
         {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
       </section>
 

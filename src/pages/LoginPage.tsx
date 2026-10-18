@@ -1,24 +1,21 @@
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useState, type ComponentType } from 'react';
-import {
-  ArrowRight,
-  Building2,
-  Lock,
-  Moon,
-  ShieldCheck,
-  Sun,
-  Users,
-} from 'lucide-react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useState } from 'react';
+import { ArrowRight, Lock, Moon, Sun } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { ApiClientError } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const LoginScene3D = lazy(() =>
+  import('@/components/LoginScene3D').then((m) => ({ default: m.LoginScene3D })),
+);
 
 const schema = z.object({
   email: z.string().email(),
@@ -33,9 +30,13 @@ export function LoginPage() {
   const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotDone, setForgotDone] = useState<string | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'admin@acme.local', password: 'Password123!' },
+    defaultValues: { email: '', password: '' },
   });
 
   if (user) {
@@ -43,17 +44,26 @@ export function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-full overflow-hidden bg-background">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 login-atmosphere lg:hidden"
-      />
+    <div
+      className={cn(
+        'relative flex min-h-full overflow-hidden',
+        theme === 'light' ? 'login-light bg-[#e8f0f8]' : 'bg-[#080a0e]',
+      )}
+    >
+      <Suspense fallback={null}>
+        <LoginScene3D className="absolute inset-0 z-0" />
+      </Suspense>
+      <div aria-hidden className="login-grid-mask pointer-events-none absolute inset-0 z-[1] opacity-30" />
+      <div aria-hidden className="login-vignette pointer-events-none absolute inset-0 z-[2]" />
 
       <button
         type="button"
         onClick={toggleTheme}
         className={cn(
-          'absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-raised/90 text-navy shadow-crm backdrop-blur transition-colors hover:bg-surface-muted',
+          'absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border shadow-crm backdrop-blur-md transition-colors',
+          theme === 'light'
+            ? 'border-navy/15 bg-white/70 text-navy hover:bg-white'
+            : 'border-white/15 bg-white/5 text-white/80 hover:bg-white/10',
         )}
         title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
       >
@@ -64,96 +74,130 @@ export function LoginPage() {
         )}
       </button>
 
-      {/* Full-bleed split — brand plane edge-to-edge on desktop */}
-      <div className="relative z-10 grid min-h-full w-full lg:grid-cols-2">
-        <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:px-12 lg:py-14 xl:px-16">
-          <div aria-hidden className="absolute inset-0 login-brand-plane" />
-          <div
-            aria-hidden
-            className="absolute inset-0 login-grid-mask opacity-[0.35] dark:opacity-[0.22]"
-          />
+      <main className="relative z-10 flex min-h-full w-full items-center justify-center px-5 py-12 sm:px-8">
+        <div className="login-fade-up w-full max-w-[420px]">
+          <Link to="/" className="mb-8 flex flex-col items-center gap-2">
+            <img
+              src="/velo-logo.png"
+              alt="VeloSphere"
+              className="h-16 w-auto object-contain drop-shadow-[0_8px_24px_rgba(148,188,227,0.28)]"
+            />
+          </Link>
 
-          <div className="login-fade-up relative">
-            <div className="inline-flex items-center gap-3">
-              <img
-                src="/velo-logo.png"
-                alt=""
-                className="h-11 w-11 rounded-md bg-navy-muted/40 object-contain p-1 ring-1 ring-white/10"
-              />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-                Operations console
-              </span>
-            </div>
-          </div>
-
-          <div className="relative max-w-lg pb-8 pt-16">
-            <h1 className="login-fade-up login-delay-1 font-sans text-5xl font-bold leading-[1.05] tracking-tight text-white xl:text-[3.35rem]">
-              Velo
-            </h1>
-            <p className="login-fade-up login-delay-2 mt-4 max-w-md text-[15px] leading-relaxed text-white/70">
-              Enterprise real estate lead CRM — assignment, attendance, and
-              pipeline control in one workspace.
-            </p>
-
-            <ul className="login-fade-up login-delay-3 mt-10 space-y-4">
-              <Feature
-                icon={Users}
-                title="Team-scoped lead ownership"
-                body="Managers assign, agents work their book."
-              />
-              <Feature
-                icon={Building2}
-                title="Import to pipeline"
-                body="Batch intake with live balance tracking."
-              />
-              <Feature
-                icon={ShieldCheck}
-                title="Role-aware access"
-                body="Admin, manager, and agent views stay separated."
-              />
-            </ul>
-          </div>
-
-          <p className="login-fade-up login-delay-4 relative text-[11px] tracking-wide text-white/40">
-            Secure tenant access · Asia/Hyderabad ready
-          </p>
-        </aside>
-
-        <main className="relative flex items-center justify-center px-5 py-12 sm:px-8 lg:bg-background lg:px-12">
-          <div className="login-fade-up login-delay-1 w-full max-w-[400px]">
-            <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <img
-                src="/velo-logo.png"
-                alt="Velo"
-                className="h-10 w-10 rounded-md bg-navy object-contain p-1"
-              />
-              <div>
-                <p className="text-lg font-bold tracking-tight text-navy">Velo</p>
-                <p className="text-xs text-muted-foreground">
-                  Enterprise lead CRM
-                </p>
-              </div>
+          <div className="login-glass rounded-2xl p-6 sm:p-8">
+            <div className="mb-6 text-center">
+              <p className={cn(
+                'text-[11px] font-semibold uppercase tracking-[0.22em]',
+                theme === 'light' ? 'text-primary' : 'text-[#94bce3]',
+              )}>
+                {forgotMode ? 'Reset password' : 'Sign in'}
+              </p>
+              <h2 className={cn(
+                'mt-2 text-2xl font-semibold tracking-tight',
+                theme === 'light' ? 'text-navy' : 'text-white',
+              )}>
+                {forgotMode ? 'Forgot password' : 'Welcome back'}
+              </h2>
+              <p className={cn(
+                'mt-1.5 text-sm',
+                theme === 'light' ? 'text-muted-foreground' : 'text-white/55',
+              )}>
+                {forgotMode
+                  ? 'We’ll email your administrator a new temporary password for this account.'
+                  : 'Use your organization email to continue.'}
+              </p>
             </div>
 
-            <div className="rounded-lg border border-border bg-surface-raised/95 p-6 shadow-crm backdrop-blur-sm sm:p-7 dark:bg-surface-raised">
-              <div className="mb-6">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Sign in
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-navy">
-                  Welcome back
-                </h2>
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  Use your organization email to continue.
-                </p>
-              </div>
-
+            {forgotMode ? (
               <form
                 className="space-y-4"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setError(null);
+                  setForgotDone(null);
+                  setForgotBusy(true);
+                  try {
+                    const data = await apiFetch<{ message?: string }>(
+                      '/api/auth/forgot-password',
+                      {
+                        method: 'POST',
+                        body: JSON.stringify({ email: forgotEmail.trim() }),
+                      },
+                    );
+                    setForgotDone(
+                      data.message ??
+                        'If this email is registered, your administrator will receive a reset email shortly.',
+                    );
+                  } catch (err) {
+                    setError(
+                      err instanceof ApiClientError
+                        ? err.message
+                        : 'Unable to send reset request',
+                    );
+                  } finally {
+                    setForgotBusy(false);
+                  }
+                }}
+              >
+                <div>
+                  <Label htmlFor="forgot-email" className={theme === 'light' ? '' : 'text-white/70'}>
+                    Email
+                  </Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    required
+                    className={cn(
+                      'mt-1.5 h-11',
+                      theme === 'light'
+                        ? ''
+                        : 'border-white/10 bg-white/5 text-white placeholder:text-white/35',
+                    )}
+                    placeholder="you@company.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                  />
+                </div>
+                {error ? (
+                  <div className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                    {error}
+                  </div>
+                ) : null}
+                {forgotDone ? (
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+                    {forgotDone}
+                  </div>
+                ) : null}
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="h-11 w-full"
+                  disabled={forgotBusy || !forgotEmail.trim()}
+                >
+                  {forgotBusy ? 'Sending…' : 'Email admin a new password'}
+                </Button>
+                <button
+                  type="button"
+                  className="w-full text-center text-sm text-[#94bce3] hover:underline"
+                  onClick={() => {
+                    setForgotMode(false);
+                    setError(null);
+                    setForgotDone(null);
+                  }}
+                >
+                  Back to sign in
+                </button>
+              </form>
+            ) : (
+              <form
+                className="space-y-4"
+                autoComplete="off"
                 onSubmit={form.handleSubmit(async (values) => {
                   setError(null);
                   try {
                     await login(values.email, values.password);
+                    const who = useAuthStore.getState().user?.name ?? '';
+                    sessionStorage.setItem('velo-welcome', who);
                     navigate('/dashboard', { replace: true });
                   } catch (e) {
                     setError(
@@ -165,11 +209,18 @@ export function LoginPage() {
                 })}
               >
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className={theme === 'light' ? '' : 'text-white/70'}>
+                    Email
+                  </Label>
                   <Input
                     id="email"
-                    autoComplete="username"
-                    className="mt-1.5 h-11 bg-surface"
+                    autoComplete="off"
+                    className={cn(
+                      'mt-1.5 h-11',
+                      theme === 'light'
+                        ? ''
+                        : 'border-white/10 bg-white/5 text-white placeholder:text-white/35',
+                    )}
                     placeholder="you@company.com"
                     {...form.register('email')}
                   />
@@ -180,14 +231,26 @@ export function LoginPage() {
                   ) : null}
                 </div>
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className={theme === 'light' ? '' : 'text-white/70'}>
+                    Password
+                  </Label>
                   <div className="relative mt-1.5">
-                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Lock
+                      className={cn(
+                        'pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2',
+                        theme === 'light' ? 'text-muted-foreground' : 'text-white/35',
+                      )}
+                    />
                     <Input
                       id="password"
                       type="password"
-                      autoComplete="current-password"
-                      className="h-11 bg-surface pl-9"
+                      autoComplete="off"
+                      className={cn(
+                        'h-11 pl-9',
+                        theme === 'light'
+                          ? ''
+                          : 'border-white/10 bg-white/5 text-white placeholder:text-white/35',
+                      )}
                       placeholder="••••••••"
                       {...form.register('password')}
                     />
@@ -220,37 +283,32 @@ export function LoginPage() {
                     </>
                   )}
                 </Button>
+                <button
+                  type="button"
+                  className="w-full text-center text-sm text-[#94bce3] hover:underline"
+                  onClick={() => {
+                    setForgotMode(true);
+                    setError(null);
+                    setForgotDone(null);
+                    setForgotEmail(form.getValues('email') || '');
+                  }}
+                >
+                  Forgot password?
+                </button>
               </form>
-            </div>
-
-            <p className="mt-6 text-center text-[11px] text-muted-foreground">
-              Protected workspace · Authorized personnel only
-            </p>
+            )}
           </div>
-        </main>
-      </div>
-    </div>
-  );
-}
 
-function Feature({
-  icon: Icon,
-  title,
-  body,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  title: string;
-  body: string;
-}) {
-  return (
-    <li className="flex gap-3">
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/10 text-white ring-1 ring-white/15">
-        <Icon className="h-4 w-4" />
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-white/55">{body}</p>
-      </div>
-    </li>
+          <p
+            className={cn(
+              'mt-6 text-center text-[11px]',
+              theme === 'light' ? 'text-muted-foreground' : 'text-white/35',
+            )}
+          >
+            Protected workspace · Authorized personnel only
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }

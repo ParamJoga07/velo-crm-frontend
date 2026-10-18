@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Area,
@@ -41,6 +41,10 @@ type DashboardSummary = {
     lost: number;
     openFollowups: number;
     missedFollowups: number;
+    callsLogged?: number;
+    revenueAchieved?: number;
+    revenueTarget?: number;
+    todayFollowups?: number;
   };
   funnel: { stage: string; count: number }[];
   sources: { source: string; count: number }[];
@@ -75,9 +79,9 @@ type DashboardSummary = {
 const STAGE_ORDER = [
   'INCOMING',
   'PROSPECT',
-  'OPPORTUNITY',
-  'BOOKED',
-  'UNQUALIFIED',
+  'DNP1',
+  'DNP2',
+  'DNP3',
   'LOST',
 ] as const;
 
@@ -129,12 +133,23 @@ export function DashboardPage() {
     fontSize: 12,
   };
 
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
   const query = useQuery({
-    queryKey: ['dashboard-summary', accessToken],
+    queryKey: ['dashboard-summary', accessToken, from, to],
     enabled: !!accessToken && sessionReady,
     staleTime: 60_000,
-    queryFn: () =>
-      apiFetch<DashboardSummary>('/api/dashboard/summary', { accessToken }),
+    queryFn: () => {
+      const sp = new URLSearchParams();
+      if (from) sp.set('from', from);
+      if (to) sp.set('to', to);
+      const q = sp.toString();
+      return apiFetch<DashboardSummary>(
+        `/api/dashboard/summary${q ? `?${q}` : ''}`,
+        { accessToken },
+      );
+    },
   });
 
   useEffect(() => {
@@ -160,7 +175,7 @@ export function DashboardPage() {
       stage,
       label: LEAD_STAGE_LABELS[stage] ?? stage,
       count: map.get(stage) ?? 0,
-    })).filter((r) => r.count > 0 || ['INCOMING', 'PROSPECT', 'OPPORTUNITY'].includes(r.stage));
+    })).filter((r) => r.count > 0 || ['INCOMING', 'PROSPECT'].includes(r.stage));
   }, [query.data?.funnel]);
 
   const outcomeData = useMemo(() => {
@@ -239,25 +254,55 @@ export function DashboardPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Ops Dashboard"
+        title="Dashboard"
         description={
           user?.role === 'SUPERADMIN'
             ? `${data.tenant.name} · organization performance`
             : `${data.tenant.name} · team performance`
         }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+            <input
+              type="date"
+              className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </div>
+        }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Leads in scope" value={data.totals.leads} />
-        <StatCard label="Unassigned" value={data.totals.unassigned} warn={data.totals.unassigned > 0} />
-        <StatCard label="Booked" value={data.totals.booked} tone="success" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Active leads" value={data.totals.leads} />
+        <StatCard
+          label="Today's follow-ups"
+          value={data.totals.todayFollowups ?? data.totals.openFollowups}
+        />
+        <StatCard label="Calls made / logged" value={data.totals.callsLogged ?? 0} />
         <StatCard
           label="Missed follow-ups"
           value={data.totals.missedFollowups}
           warn={data.totals.missedFollowups > 0}
         />
-        <StatCard label="Active users" value={data.totals.users} />
-        <StatCard label="Teams" value={data.totals.teams} />
+        <StatCard
+          label="Total revenue target"
+          value={`₹${(data.totals.revenueTarget ?? 0).toLocaleString('en-IN')}`}
+        />
+        <StatCard
+          label="Total revenue achieved"
+          value={`₹${(data.totals.revenueAchieved ?? 0).toLocaleString('en-IN')}`}
+          tone="success"
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Unassigned" value={data.totals.unassigned} warn={data.totals.unassigned > 0} />
+        <StatCard label="Booked" value={data.totals.booked} tone="success" />
         <StatCard label="Open follow-ups" value={data.totals.openFollowups} />
         <StatCard
           label="Lead quota used"

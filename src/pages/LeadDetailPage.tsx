@@ -4,37 +4,45 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   CalendarPlus,
   Mail,
-  MapPin,
   MessageSquare,
   Phone,
+  PhoneMissed,
   StickyNote,
+  Save,
   Trash2,
   Users,
   Video,
 } from 'lucide-react';
 import {
-  LEAD_PRIORITY_LABELS,
   LEAD_STAGE_LABELS,
-  type LeadPriority,
+  PROJECT_NAMES,
+  isProspectRatingEditable,
+  nextDnpStage,
   type LeadStage,
 } from '@velo/shared';
+import {
+  normalizeListEnvelope,
+  type ListEnvelope,
+} from '@/hooks/useTablePagination';
 import { PageHeader } from '@/components/PageHeader';
 import { LeadPriorityBadge, LeadStageBadge } from '@/components/LeadStatusBadges';
-import { Badge } from '@/components/ui/badge';
+import { LeadStagePipeline } from '@/components/LeadStagePipeline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/form';
 import { TableSkeleton } from '@/components/ui/data-table';
-import { apiFetch } from '@/lib/api';
+import { apiBeacon, apiFetch } from '@/lib/api';
+import { LeadPhoneLink } from '@/components/LeadPhoneLink';
+import { formatLeadNo } from '@/lib/lead-number';
 import { useAuthStore } from '@/stores/auth';
+import { useConfirm } from '@/lib/confirm';
 import { cn } from '@/lib/utils';
 
-const STAGES = Object.keys(LEAD_STAGE_LABELS) as LeadStage[];
-const PRIORITIES = Object.keys(LEAD_PRIORITY_LABELS) as LeadPriority[];
 
 type LeadDetail = {
   lead: {
     id: string;
+    leadNo: number;
     name: string;
     phone: string;
     altPhone: string | null;
@@ -83,18 +91,16 @@ type Tab =
   | 'call'
   | 'whatsapp'
   | 'meeting'
-  | 'email'
-  | 'site_visit';
+  | 'email';
 
 const ACTIVITY_TAB_TYPE: Record<
   Exclude<Tab, 'note' | 'followup'>,
-  'CALL' | 'WHATSAPP' | 'MEETING' | 'EMAIL' | 'SITE_VISIT'
+  'CALL' | 'WHATSAPP' | 'MEETING' | 'EMAIL'
 > = {
   call: 'CALL',
   whatsapp: 'WHATSAPP',
   meeting: 'MEETING',
   email: 'EMAIL',
-  site_visit: 'SITE_VISIT',
 };
 
 function activityText(a: LeadDetail['activities'][0]) {
@@ -114,20 +120,90 @@ function activityText(a: LeadDetail['activities'][0]) {
   if (a.type === 'LEAD_OPENED') return 'Lead was opened.';
   if (a.type === 'VIEW_NO_ACTION')
     return 'Opened without saving — marked as No Future Activity.';
+  if (a.type === 'CALL_INITIATED')
+    return `Dialpad opened for ${String(p.phone ?? '')}.`;
+  if (a.type === 'DID_NOT_PICK')
+    return p.from
+      ? `Did not pick — lead moved from ${String(p.from)} to ${String(p.to)}.`
+      : `Did not pick — lead stays at ${String(p.stage ?? 'DNP3')}.`;
   return a.type;
+}
+
+/**
+ * A React StrictMode remount tears the open/close effect down and sets it back
+ * up in the same tick, so the "left without saving" report is deferred briefly
+ * and cancelled if the same lead is opened again inside that window.
+ */
+const pendingNoAction = new Map<string, ReturnType<typeof setTimeout>>();
+
+function cancelNoActionReport(leadId: string) {
+  const timer = pendingNoAction.get(leadId);
+  if (timer) {
+    clearTimeout(timer);
+    pendingNoAction.delete(leadId);
+  }
+}
+
+function scheduleNoActionReport(leadId: string, accessToken: string) {
+  cancelNoActionReport(leadId);
+  pendingNoAction.set(
+    leadId,
+    setTimeout(() => {
+      pendingNoAction.delete(leadId);
+      apiBeacon(`/api/leads/${leadId}/close-no-action`, { accessToken });
+    }, 500),
+  );
+}
+
+type LeadDraft = {
+  name: string;
+  phone: string;
+  altPhone: string;
+  email: string;
+  city: string;
+  requirement: string;
+  configuration: string;
+  remarks: string;
+  source: string;
+  stage: string;
+  priority: string;
+  lostReason: string;
+};
+
+function draftFromLead(lead: LeadDetail['lead']): LeadDraft {
+  return {
+    name: lead.name,
+    phone: lead.phone,
+    altPhone: lead.altPhone ?? '',
+    email: lead.email ?? '',
+    city: lead.city ?? '',
+    requirement: lead.requirement ?? '',
+    configuration: lead.configuration ?? '',
+    remarks: lead.remarks ?? '',
+    source: lead.source,
+    stage: lead.stage,
+    priority: lead.priority,
+    lostReason: lead.lostReason ?? '',
+  };
 }
 
 export function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.user?.role);
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('note');
   const [note, setNote] = useState('');
   const [activityNotes, setActivityNotes] = useState('');
   const [activityOutcome, setActivityOutcome] = useState('');
-  const [lostReason, setLostReason] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('');
+  const [meetingProjects, setMeetingProjects] = useState<string[]>([]);
+  const [meetingTakers, setMeetingTakers] = useState<string[]>([]);
+  const [draft, setDraft] = useState<LeadDraft | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [followupOpen, setFollowupOpen] = useState(false);
   const [followup, setFollowup] = useState({
     date: '',
@@ -138,7 +214,7 @@ export function LeadDetailPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const savedSomething = useRef(false);
-  const openedLogged = useRef(false);
+  const openedLogged = useRef<string | null>(null);
 
   const query = useQuery({
     queryKey: ['lead', id],
@@ -147,30 +223,49 @@ export function LeadDetailPage() {
     queryFn: () => apiFetch<LeadDetail>(`/api/leads/${id}`, { accessToken }),
   });
 
+  const agents = useQuery({
+    queryKey: ['users-agents'],
+    queryFn: async () => {
+      const res = await apiFetch<ListEnvelope<{ id: string; name: string }>>(
+        '/api/users/directory',
+        { accessToken },
+      );
+      return normalizeListEnvelope(res).data;
+    },
+  });
+
   useEffect(() => {
-    if (!id || !accessToken || openedLogged.current) return;
-    openedLogged.current = true;
-    savedSomething.current = false;
-    void apiFetch(`/api/leads/${id}/open`, {
-      method: 'POST',
-      accessToken,
-    }).catch(() => undefined);
+    if (!id || !accessToken) return;
+    cancelNoActionReport(id);
+    if (openedLogged.current !== id) {
+      openedLogged.current = id;
+      savedSomething.current = false;
+      void apiFetch(`/api/leads/${id}/open`, {
+        method: 'POST',
+        accessToken,
+      }).catch(() => undefined);
+    }
+
+    // A tab close / reload never runs the cleanup below, so cover it too — and
+    // there is no point deferring when the page is already going away.
+    const onPageHide = () => {
+      if (savedSomething.current) return;
+      apiBeacon(`/api/leads/${id}/close-no-action`, { accessToken });
+    };
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
-      if (!savedSomething.current && accessToken) {
-        void fetch(`/api/leads/${id}/close-no-action`, {
-          method: 'POST',
-          credentials: 'include',
-          keepalive: true,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: '{}',
-        }).catch(() => undefined);
-      }
+      window.removeEventListener('pagehide', onPageHide);
+      // Leaving the lead without saving anything moves it to No future activity.
+      if (!savedSomething.current) scheduleNoActionReport(id, accessToken);
     };
   }, [id, accessToken]);
+
+  // Navigating to a different lead drops any draft from the previous one.
+  useEffect(() => {
+    setDraft(null);
+    setSaveNotice(null);
+  }, [id]);
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['lead', id] });
@@ -180,6 +275,7 @@ export function LeadDetailPage() {
 
   const markSaved = () => {
     savedSomething.current = true;
+    if (id) cancelNoActionReport(id);
   };
 
   const saveNote = useMutation({
@@ -219,36 +315,40 @@ export function LeadDetailPage() {
     onError: (e: Error) => setError(e.message),
   });
 
-  const updateStage = useMutation({
-    mutationFn: (stage: string) =>
-      apiFetch(`/api/leads/${id}/stage`, {
+  const saveLead = useMutation({
+    mutationFn: (body: LeadDraft) =>
+      apiFetch<LeadDetail['lead']>(`/api/leads/${id}`, {
         method: 'PATCH',
         accessToken,
         body: JSON.stringify({
-          stage,
-          lostReason: stage === 'LOST' ? lostReason || 'Not interested' : null,
+          name: body.name.trim(),
+          phone: body.phone.trim(),
+          altPhone: body.altPhone.trim() || null,
+          email: body.email.trim() || null,
+          city: body.city.trim() || null,
+          requirement: body.requirement.trim() || null,
+          configuration: body.configuration.trim() || null,
+          remarks: body.remarks.trim() || null,
+          source: body.source.trim(),
+          stage: body.stage,
+          priority: body.priority,
+          lostReason:
+            body.stage === 'LOST'
+              ? body.lostReason.trim() || 'Not interested'
+              : null,
         }),
       }),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       markSaved();
       setError(null);
+      setSaveNotice('Lead details saved.');
+      setDraft(draftFromLead(saved));
       invalidate();
     },
-    onError: (e: Error) => setError(e.message),
-  });
-
-  const updateField = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      apiFetch(`/api/leads/${id}`, {
-        method: 'PATCH',
-        accessToken,
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      markSaved();
-      invalidate();
+    onError: (e: Error) => {
+      setSaveNotice(null);
+      setError(e.message);
     },
-    onError: (e: Error) => setError(e.message),
   });
 
   const removeLead = useMutation({
@@ -286,6 +386,22 @@ export function LeadDetailPage() {
         kind: 'FOLLOW_UP',
       });
       setError(null);
+      invalidate();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const markDidNotPick = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/leads/${id}/did-not-pick`, {
+        method: 'POST',
+        accessToken,
+      }),
+    onSuccess: () => {
+      markSaved();
+      setError(null);
+      // The server owns the new stage, so drop any stale draft of it.
+      setDraft(null);
       invalidate();
     },
     onError: (e: Error) => setError(e.message),
@@ -333,6 +449,16 @@ export function LeadDetailPage() {
     );
   }
 
+  // The form is seeded from the server copy until the user edits something;
+  // after that the draft wins, so a background poll never clobbers typing.
+  const saved = draftFromLead(lead);
+  const form = draft ?? saved;
+  const isDirty = (Object.keys(saved) as (keyof LeadDraft)[]).some(
+    (key) => form[key] !== saved[key],
+  );
+  const setField = (key: keyof LeadDraft, value: string) =>
+    setDraft((current) => ({ ...(current ?? saved), [key]: value }));
+
   const onNoteSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!note.trim()) return;
@@ -342,6 +468,31 @@ export function LeadDetailPage() {
   const onActivitySubmit = (e: FormEvent) => {
     e.preventDefault();
     if (tab === 'note' || tab === 'followup') return;
+    if (tab === 'meeting' && meetingDate && meetingTime && query.data?.lead) {
+      const visitAt = new Date(`${meetingDate}T${meetingTime}:00`).toISOString();
+      void apiFetch('/api/lead-registrations', {
+        method: 'POST',
+        accessToken,
+        body: JSON.stringify({
+          clientName: query.data.lead.name,
+          clientNumber: query.data.lead.phone,
+          altPhone: query.data.lead.altPhone,
+          email: query.data.lead.email,
+          projectName: meetingProjects.join(', ') || null,
+          visitAt,
+          takerIds: meetingTakers,
+        }),
+      })
+        .then(() => {
+          setMeetingDate('');
+          setMeetingTime('');
+          setMeetingProjects([]);
+          setMeetingTakers([]);
+          void qc.invalidateQueries({ queryKey: ['lead-registrations'] });
+          void qc.invalidateQueries({ queryKey: ['meetings'] });
+        })
+        .catch((err: Error) => setError(err.message));
+    }
     logActivity.mutate(ACTIVITY_TAB_TYPE[tab]);
   };
 
@@ -357,21 +508,35 @@ export function LeadDetailPage() {
 
       <PageHeader
         title={lead.name}
-        description={`#${lead.id.slice(0, 8)} · ${lead.phone}${
-          lead.email ? ` · ${lead.email}` : ''
-        }`}
+        description={
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <span className="font-mono font-semibold text-navy">
+              {formatLeadNo(lead.leadNo)}
+            </span>
+            <span>·</span>
+            <LeadPhoneLink leadId={lead.id} phone={lead.phone} showIcon />
+            {lead.email ? <span>· {lead.email}</span> : null}
+          </span>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <LeadPriorityBadge priority={lead.priority} />
-            <LeadStageBadge stage={lead.stage} />
+            {isProspectRatingEditable(lead.stage) ? (
+              <LeadPriorityBadge priority={lead.priority} emphasis />
+            ) : null}
+            <LeadStageBadge stage={lead.stage} emphasis />
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface font-mono text-sm font-semibold text-navy">
               {lead.score}
             </span>
-            <Badge tone="new">{query.data?.meta.openTasks ?? 0} tasks</Badge>
-            {lead.noFutureFlag ? <Badge tone="warning">No future</Badge> : null}
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => setFollowupOpen(true)}>
-              <CalendarPlus className="mr-1.5 h-3.5 w-3.5" />
-              Follow-up
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-full sm:w-auto"
+              disabled={markDidNotPick.isPending}
+              title={`Moves this lead to ${LEAD_STAGE_LABELS[nextDnpStage(lead.stage as LeadStage)]}`}
+              onClick={() => markDidNotPick.mutate()}
+            >
+              <PhoneMissed className="mr-1.5 h-3.5 w-3.5" />
+              Did not pick
             </Button>
             {role !== 'USER' ? (
               <Button
@@ -379,10 +544,15 @@ export function LeadDetailPage() {
                 variant="secondary"
                 className="text-danger"
                 disabled={removeLead.isPending}
-                onClick={() => {
-                  if (window.confirm('Delete this lead permanently?')) {
-                    removeLead.mutate();
-                  }
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Delete this lead?',
+                    description: 'This permanently removes the lead and cannot be undone.',
+                    confirmLabel: 'Delete',
+                    variant: 'danger',
+                  });
+                  if (!ok) return;
+                  removeLead.mutate();
                 }}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -406,56 +576,179 @@ export function LeadDetailPage() {
         </div>
       ) : null}
 
+      <section className="rounded-xl border border-border bg-surface-raised p-3 shadow-panel sm:p-4">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Pipeline
+          </h3>
+          {isDirty ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-amber-600">
+                Unsaved changes
+              </span>
+              <Button
+                size="sm"
+                className="h-7"
+                disabled={saveLead.isPending}
+                onClick={() => saveLead.mutate(form)}
+              >
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                {saveLead.isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <LeadStagePipeline
+            value={form.stage}
+            disabled={saveLead.isPending}
+            onChange={(stage) => setField('stage', stage)}
+            priority={form.priority}
+            onPriorityChange={(priority) => setField('priority', priority)}
+            lostReason={form.lostReason}
+            onLostReasonChange={(reason) => {
+              setField('stage', 'LOST');
+              setField('lostReason', reason);
+            }}
+          />
+        </div>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr]">
         <aside className="space-y-3">
-          <section className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
-            <Label>Stage &amp; status</Label>
-            <select
-              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-              value={lead.stage}
-              onChange={(e) => updateStage.mutate(e.target.value)}
-            >
-              {STAGES.map((s) => (
-                <option key={s} value={s}>
-                  {LEAD_STAGE_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <Label className="mt-3 block">Priority</Label>
-            <select
-              className="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
-              value={lead.priority}
-              onChange={(e) => updateField.mutate({ priority: e.target.value })}
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {LEAD_PRIORITY_LABELS[p]}
-                </option>
-              ))}
-            </select>
-            {lead.stage === 'LOST' || updateStage.variables === 'LOST' ? (
+          <form
+            className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (form && isDirty) saveLead.mutate(form);
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Lead details
+              </h3>
+              {isDirty ? (
+                <span className="text-[11px] font-medium text-amber-600">
+                  Unsaved changes
+                </span>
+              ) : null}
+            </div>
+
+            <Label>Name</Label>
+            <Input
+              className="mt-1"
+              value={form.name}
+              onChange={(e) => setField('name', e.target.value)}
+            />
+
+            <Label className="mt-3 block">Phone</Label>
+            <div className="mt-1 flex items-center gap-2">
               <Input
-                className="mt-2"
-                placeholder="Lost reason"
-                value={lostReason || lead.lostReason || ''}
-                onChange={(e) => setLostReason(e.target.value)}
-                onBlur={() => {
-                  if (lead.stage === 'LOST' && lostReason.trim()) {
-                    updateStage.mutate('LOST');
-                  }
-                }}
+                className="flex-1"
+                value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)}
               />
+              <LeadPhoneLink
+                leadId={lead.id}
+                phone={lead.phone}
+                className="shrink-0 text-xs"
+                showIcon
+              />
+            </div>
+
+            <Label className="mt-3 block">Alternate phone</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Input
+                className="flex-1"
+                value={form.altPhone}
+                onChange={(e) => setField('altPhone', e.target.value)}
+              />
+              {lead.altPhone ? (
+                <LeadPhoneLink
+                  leadId={lead.id}
+                  phone={lead.altPhone}
+                  field="altPhone"
+                  className="shrink-0 text-xs"
+                  showIcon
+                />
+              ) : null}
+            </div>
+
+            <Label className="mt-3 block">Email</Label>
+            <Input
+              className="mt-1"
+              type="email"
+              value={form.email}
+              onChange={(e) => setField('email', e.target.value)}
+            />
+
+            <Label className="mt-3 block">City</Label>
+            <Input
+              className="mt-1"
+              value={form.city}
+              onChange={(e) => setField('city', e.target.value)}
+            />
+
+            <Label className="mt-3 block">Requirement</Label>
+            <Input
+              className="mt-1"
+              value={form.requirement}
+              onChange={(e) => setField('requirement', e.target.value)}
+            />
+
+            <Label className="mt-3 block">Configuration</Label>
+            <Input
+              className="mt-1"
+              value={form.configuration}
+              onChange={(e) => setField('configuration', e.target.value)}
+            />
+
+            <Label className="mt-3 block">Source / tags</Label>
+            <Input
+              className="mt-1"
+              value={form.source}
+              onChange={(e) => setField('source', e.target.value)}
+            />
+
+            <Label className="mt-3 block">Remarks</Label>
+            <textarea
+              className="mt-1 min-h-[72px] w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25"
+              value={form.remarks}
+              onChange={(e) => setField('remarks', e.target.value)}
+            />
+
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={!isDirty || saveLead.isPending}
+              >
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                {saveLead.isPending ? 'Saving…' : 'Save'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!isDirty || saveLead.isPending}
+                onClick={() => {
+                  setDraft(draftFromLead(lead));
+                  setSaveNotice(null);
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+            {saveNotice && !isDirty ? (
+              <p className="mt-2 text-xs text-emerald-600">{saveNotice}</p>
             ) : null}
-          </section>
+          </form>
 
           <section className="rounded-lg border border-border bg-surface-raised p-3 text-sm shadow-panel">
             <dl className="space-y-2">
+              <Row label="Lead ID" value={formatLeadNo(lead.leadNo)} />
               <Row label="Received on" value={new Date(lead.createdAt).toLocaleString()} />
               <Row label="Lead age" value={`${query.data?.meta.ageDays ?? 0} days`} />
-              <Row label="City" value={lead.city || '—'} />
-              <Row label="Requirement" value={lead.requirement || '—'} />
-              <Row label="Configuration" value={lead.configuration || '—'} />
-              <Row label="Source / tags" value={lead.source} />
               <Row label="Owner" value={lead.assignedTo?.name ?? 'Unassigned'} />
               <Row label="Team" value={lead.team?.name ?? '—'} />
               <Row label="Campaign" value={lead.campaign?.name ?? '—'} />
@@ -468,11 +761,6 @@ export function LeadDetailPage() {
                 }
               />
             </dl>
-            {lead.remarks ? (
-              <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
-                {lead.remarks}
-              </p>
-            ) : null}
           </section>
 
           <section className="rounded-lg border border-border bg-surface-raised p-3 shadow-panel">
@@ -521,7 +809,6 @@ export function LeadDetailPage() {
                 { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
                 { id: 'meeting', label: 'Meeting', icon: Users },
                 { id: 'email', label: 'Email', icon: Mail },
-                { id: 'site_visit', label: 'Site visit', icon: MapPin },
               ] as const
             ).map((t) => (
               <button
@@ -573,6 +860,66 @@ export function LeadDetailPage() {
                 {tab === 'meeting' ? <Video className="h-4 w-4" /> : null}
                 Log {ACTIVITY_TAB_TYPE[tab].replace(/_/g, ' ').toLowerCase()}
               </div>
+              {tab === 'meeting' ? (
+                <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <Label>Date</Label>
+                    <Input
+                      className="mt-1"
+                      type="date"
+                      value={meetingDate}
+                      onChange={(e) => setMeetingDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Time</Label>
+                    <Input
+                      className="mt-1"
+                      type="time"
+                      value={meetingTime}
+                      onChange={(e) => setMeetingTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Meeting taken by</Label>
+                    <select
+                      multiple
+                      className="mt-1 h-24 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                      value={meetingTakers}
+                      onChange={(e) =>
+                        setMeetingTakers(
+                          [...e.target.selectedOptions].map((o) => o.value),
+                        )
+                      }
+                    >
+                      {(agents.data ?? []).map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Projects</Label>
+                    <select
+                      multiple
+                      className="mt-1 h-24 w-full rounded-md border border-border bg-surface px-2 text-sm"
+                      value={meetingProjects}
+                      onChange={(e) =>
+                        setMeetingProjects(
+                          [...e.target.selectedOptions].map((o) => o.value),
+                        )
+                      }
+                    >
+                      {PROJECT_NAMES.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : null}
               <Input
                 className="mb-2"
                 placeholder="Outcome (e.g. Connected / No answer / Interested)"
@@ -673,7 +1020,7 @@ export function LeadDetailPage() {
                   }
                 >
                   <option value="FOLLOW_UP">Call</option>
-                  <option value="SITE_VISIT">Site visit</option>
+                  <option value="MEETING">Meeting</option>
                   <option value="EMAIL">Email</option>
                   <option value="WHATSAPP">WhatsApp</option>
                 </select>

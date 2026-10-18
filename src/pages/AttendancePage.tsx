@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable, TableSkeleton, tableShellClass, tableHeadClass, tableRowClass, tableCellClass } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ type Summary = {
     records: number;
     present: number;
     absent: number;
+    halfDay?: number;
     workedSec: number;
   };
 };
@@ -147,7 +148,6 @@ export function AttendancePage() {
 
   const summary = useQuery({
     queryKey: ['attendance-summary'],
-    enabled: tab === 'logs',
     queryFn: () =>
       apiFetch<Summary>('/api/attendance/summary', { accessToken }),
   });
@@ -224,7 +224,7 @@ export function AttendancePage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Attendance & Availability"
+        title="Attendance & Leaves"
         description={
           selectedTeamName
             ? `Team: ${selectedTeamName}`
@@ -285,8 +285,21 @@ export function AttendancePage() {
             >
               Attendance logs
             </button>
+            <Link
+              to="/leave"
+              className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium text-navy hover:bg-surface-muted"
+            >
+              Leaves
+            </Link>
           </>
-        ) : null}
+        ) : (
+          <Link
+            to="/leave"
+            className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium text-navy hover:bg-surface-muted"
+          >
+            Leaves
+          </Link>
+        )}
         {isManager ? (
           <div className="w-full sm:ml-auto sm:w-auto">
             <Label className="sr-only">Team</Label>
@@ -310,6 +323,15 @@ export function AttendancePage() {
           </div>
         ) : null}
       </div>
+
+      {today ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Present" value={today.present} />
+          <Stat label="Absent" value={today.absent} />
+          <Stat label="Half-day" value={today.halfDay ?? 0} />
+          <Stat label="Hours logged" value={formatHours(today.workedSec)} />
+        </div>
+      ) : null}
 
       {tab === 'availability' && isManager ? (
         availability.isLoading ? (
@@ -434,15 +456,6 @@ export function AttendancePage() {
         )
       ) : (
         <>
-          {today ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="Today records" value={today.records} />
-              <Stat label="Present" value={today.present} />
-              <Stat label="Absent" value={today.absent} />
-              <Stat label="Hours logged" value={formatHours(today.workedSec)} />
-            </div>
-          ) : null}
-
           <div className="flex flex-wrap gap-3 rounded-md border border-border bg-surface-raised p-3 shadow-panel">
             <div>
               <Label>From</Label>
