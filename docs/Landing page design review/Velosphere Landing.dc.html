@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #F1F3F5; font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #2C4260; text-decoration: none; }
+  a:hover { color: #3D5A80; }
+  :focus-visible { outline: 2px solid #3D5A80; outline-offset: 2px; border-radius: 4px; }
+  @media (max-width: 860px) { .vs-navlinks { display: none !important; } }
+  @media (max-width: 640px) { .vs-hide-sm { display: none !important; } }
+</style>
+</helmet>
+
+<!-- robots guidance: never link or index app routes /leads, /admin, /hrms — marketing page links only to / and /login -->
+
+<header ref="{{ navRef }}" style="position: sticky; top: 0; z-index: 50; background: #FFFFFF; border-bottom: 1px solid #D5DAE1; transition: background 200ms ease-out, box-shadow 200ms ease-out;">
+  <nav aria-label="Main" style="max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 32px;">
+    <a href="#top" style="display: flex; align-items: center; gap: 10px;">
+      <span role="img" aria-label="Velosphere logo" style="width: 30px; height: 30px; background: #1C1F26; border-radius: 7px; box-shadow: inset 0 0 0 1.5px #3D5A80; display: flex; align-items: center; justify-content: center; color: #E8EAEF; font-weight: 700; font-size: 15px;">V</span>
+      <span style="font-weight: 600; font-size: 16px; color: #1C1F26; letter-spacing: -0.01em;">Velosphere</span>
+    </a>
+    <div class="vs-navlinks" style="display: flex; gap: 26px; font-size: 14px; font-weight: 500;">
+      <a href="#product" style="color: #1C1F26;" style-hover="color: #3D5A80;">Product</a>
+      <a href="#pipeline" style="color: #1C1F26;" style-hover="color: #3D5A80;">Pipeline</a>
+      <a href="#hr" style="color: #1C1F26;" style-hover="color: #3D5A80;">HR &amp; Attendance</a>
+      <a href="#pricing" style="color: #1C1F26;" style-hover="color: #3D5A80;">Pricing</a>
+      <a href="#security" style="color: #1C1F26;" style-hover="color: #3D5A80;">Security</a>
+    </div>
+    <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+      <a href="https://velospherecrm.com/login" style="padding: 8px 16px; border: 1px solid #3D5A80; border-radius: 6px; color: #2C4260; font-size: 14px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #E4EAF1;">Sign in</a>
+      <a href="#cta" style="padding: 8px 16px; background: #3D5A80; border-radius: 6px; color: #FFFFFF; font-size: 14px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #2C4260;">Book a demo</a>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section id="product" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(480px, 100%), 1fr));">
+  <div style="background: #1C1F26; background-image: radial-gradient(ellipse 600px 420px at 12% 100%, rgba(61,90,128,0.22), transparent 70%), linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px); background-size: auto, 36px 36px, 36px 36px; padding: clamp(56px, 7vw, 96px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center;">
+    <div data-reveal="1" style="max-width: 560px;">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 20px;">Operations Console</div>
+      <h1 style="font-size: clamp(34px, 4.2vw, 54px); line-height: 1.08; letter-spacing: -0.02em; font-weight: 700; color: #E8EAEF; margin: 0 0 20px;">Pipeline, people, and attendance in one CRM.</h1>
+      <p style="font-size: 16px; line-height: 1.65; color: rgba(232,234,239,0.72); margin: 0 0 32px; max-width: 480px;">Built for real-estate sales floors. Import thousands of leads, assign by team, and see who is working — without leaving the console.</p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 44px;">
+        <a href="#cta" style="padding: 12px 24px; background: #3D5A80; border-radius: 6px; color: #FFFFFF; font-size: 15px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #2C4260;">Book a demo</a>
+        <a href="https://velospherecrm.com/login" style="padding: 12px 24px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #E8EAEF; font-size: 15px; font-weight: 600; transition: all 150ms ease-out;" style-hover="border-color: rgba(255,255,255,0.45);">Sign in</a>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.08);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600;">Team-scoped lead ownership</strong> · Managers assign, agents work their book</p>
+        </div>
+        <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.08);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600;">Import to pipeline</strong> · Batch intake with live balance tracking</p>
+        </div>
+        <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.08);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600;">Role-aware access</strong> · Admin, manager and agent views stay separated</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="background: #F7F8FA; padding: clamp(48px, 6vw, 80px) clamp(20px, 4vw, 56px); display: flex; align-items: center; justify-content: center;">
+    <div data-reveal="1" style="width: 100%; max-width: 640px;">
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: -10px; position: relative; z-index: 2; padding: 0 12px;">
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06); flex: 1; min-width: 200px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <span style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Lead balance</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #1C1F26; font-weight: 600;">{{ leadBalanceFmt }} / 25,000</span>
+          </div>
+          <div style="height: 5px; background: #E4EAF1; border-radius: 3px; overflow: hidden;">
+            <div style="height: 100%; background: #3D5A80; border-radius: 3px; width: {{ quotaPct }};"></div>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06); display: flex; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: flex-end; gap: 3px; height: 26px;">
+            <div style="width: 7px; height: 26px; background: #3D5A80; border-radius: 1px;"></div>
+            <div style="width: 7px; height: 18px; background: #7A9BBF; border-radius: 1px;"></div>
+            <div style="width: 7px; height: 11px; background: #A9BED4; border-radius: 1px;"></div>
+            <div style="width: 7px; height: 6px; background: #2F6F4E; border-radius: 1px;"></div>
+          </div>
+          <div>
+            <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Funnel</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #1C1F26; font-weight: 600;">7,192 open</div>
+          </div>
+        </div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06); overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #D5DAE1;">
+          <span style="font-size: 13px; font-weight: 600; color: #1C1F26;">Leads · My team</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6B7280;">6 of 1,204</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1.35fr 0.75fr 1.05fr 1fr 0.95fr 0.95fr 0.6fr; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #D5DAE1; background: #F7F8FA;">
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Lead</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">City</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Budget</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Source</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Stage</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Owner</span>
+          <span style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Updated</span>
+        </div>
+        <sc-for list="{{ leads }}" as="lead" hint-placeholder-count="6">
+          <div style="display: grid; grid-template-columns: 1.35fr 0.75fr 1.05fr 1fr 0.95fr 0.95fr 0.6fr; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #EDF0F3; align-items: center;">
+            <span style="display: flex; align-items: center; gap: 7px; min-width: 0;"><span style="width: 7px; height: 7px; border-radius: 50%; background: {{ lead.dot }}; flex-shrink: 0;"></span><span style="font-size: 12.5px; font-weight: 600; color: #1C1F26; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ lead.name }}</span></span>
+            <span style="font-size: 12px; color: #6B7280;">{{ lead.city }}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #1C1F26; white-space: nowrap;">{{ lead.budget }}</span>
+            <span style="font-size: 12px; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ lead.source }}</span>
+            <span><span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; background: {{ lead.stBg }}; color: {{ lead.stFg }};">{{ lead.stage }}</span></span>
+            <span style="font-size: 12px; color: #1C1F26; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ lead.owner }}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6B7280;">{{ lead.updated }}</span>
+          </div>
+        </sc-for>
+        <div style="display: flex; justify-content: space-between; padding: 10px 16px; background: #F7F8FA;">
+          <span style="font-size: 11px; color: #6B7280;">Filtered · Stage: all · Priority: all</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #2C4260; font-weight: 600;">Page 1 / 201</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STAGE STRIP -->
+<section id="pipeline" style="background: #F1F3F5; border-bottom: 1px solid #D5DAE1; padding: 36px 24px;">
+  <div data-reveal="1" style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 6px; padding: 10px 18px; text-align: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #1C1F26;">Incoming</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6B7280;">4,210</div>
+        </div>
+        <span style="color: #6B7280;">→</span>
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 6px; padding: 10px 18px; text-align: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #1C1F26;">Prospect</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6B7280;">1,930</div>
+        </div>
+        <span style="color: #6B7280;">→</span>
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 6px; padding: 10px 18px; text-align: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #1C1F26;">Opportunity</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6B7280;">842</div>
+        </div>
+        <span style="color: #6B7280;">→</span>
+        <div style="background: #FFFFFF; border: 1px solid #3D5A80; border-radius: 6px; padding: 10px 18px; text-align: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #2C4260;">Booked</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #2F6F4E; font-weight: 600;">212</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-left: 12px;">
+        <span style="padding: 5px 12px; border-radius: 6px; background: #E9ECEF; color: #6B7280; font-size: 11.5px; font-weight: 500;">Unqualified · <span style="font-family: 'IBM Plex Mono', monospace;">396</span></span>
+        <span style="padding: 5px 12px; border-radius: 6px; background: #E9ECEF; color: #6B7280; font-size: 11.5px; font-weight: 500;">Lost · <span style="font-family: 'IBM Plex Mono', monospace;">518</span></span>
+      </div>
+      <div style="display: flex; gap: 8px; margin-left: auto;">
+        <span style="padding: 4px 12px; border-radius: 999px; background: rgba(163,59,59,0.1); color: #A33B3B; font-size: 11px; font-weight: 600;">● Hot</span>
+        <span style="padding: 4px 12px; border-radius: 999px; background: rgba(154,103,0,0.1); color: #9A6700; font-size: 11px; font-weight: 600;">● Warm</span>
+        <span style="padding: 4px 12px; border-radius: 999px; background: #E4EAF1; color: #2C4260; font-size: 11px; font-weight: 600;">● Cold</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAND -->
+<section style="background: #F7F8FA; padding: clamp(56px, 6vw, 80px) 24px; border-bottom: 1px solid #D5DAE1;">
+  <div data-reveal="1" style="max-width: 1200px; margin: 0 auto; text-align: center;">
+    <p style="font-size: 15px; color: #6B7280; margin: 0 0 36px;">Built for developers, channel partners and brokerage sales floors.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px;">
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; color: #1C1F26;">250,000</div>
+        <div style="font-size: 13px; color: #6B7280; margin-top: 4px;">leads per tenant</div>
+      </div>
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; color: #1C1F26;">100</div>
+        <div style="font-size: 13px; color: #6B7280; margin-top: 4px;">seats</div>
+      </div>
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; color: #1C1F26;">6</div>
+        <div style="font-size: 13px; color: #6B7280; margin-top: 4px;">pipeline stages</div>
+      </div>
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: clamp(24px, 2.6vw, 32px); font-weight: 600; color: #1C1F26;">Asia/Kolkata</div>
+        <div style="font-size: 13px; color: #6B7280; margin-top: 4px;">native timezone</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section style="background: #F1F3F5; padding: clamp(72px, 9vw, 112px) 24px;">
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <div data-reveal="1" style="max-width: 620px; margin-bottom: 48px;">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #3D5A80; font-weight: 600; margin-bottom: 14px;">Modules</div>
+      <h2 style="font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.015em; font-weight: 700; color: #1C1F26; margin: 0 0 14px;">The console owns the whole floor.</h2>
+      <p style="font-size: 16px; line-height: 1.65; color: #6B7280; margin: 0;">Leads, assignment, imports, attendance and HR live in one workspace — not five tools taped together.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px;">
+      <div data-reveal="1" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"></path><path d="m3 7 2 2 4-4"></path><path d="M13 6h8"></path><path d="M13 12h8"></path><path d="M13 18h8"></path></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">Leads &amp; pipeline</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Search, filters, custom fields, notes, activities, follow-ups, campaign and project on every lead, lost reasons.</p>
+      </div>
+      <div data-reveal="1" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">Assignment rules</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Route by source, project or campaign to a team; round-robin strategies; bulk reassign for managers.</p>
+      </div>
+      <div data-reveal="1" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">Imports &amp; exports</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Excel/CSV intake with field mapping and header row, re-engage or reassign existing leads, export jobs, live quota balance.</p>
+      </div>
+      <div data-reveal="1" id="hr" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">Attendance</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Heartbeat check-in, present / half-day / full-day rules, weekly availability calendar, leave requests and approvals.</p>
+      </div>
+      <div data-reveal="1" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">HRMS</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Employee profiles that exist before a CRM login is granted, departments, teams, expiry-aware documents.</p>
+      </div>
+      <div data-reveal="1" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg></div>
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">White-label</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0;">Your product name and primary/secondary/accent/sidebar colours across the tenant.</p>
+      </div>
+    </div>
+    <div data-reveal="1" style="margin-top: 20px; background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+      <div style="width: 38px; height: 38px; background: #E4EAF1; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg></div>
+      <div style="flex: 1; min-width: 260px;">
+        <h3 style="font-size: 16px; font-weight: 600; color: #1C1F26; margin: 0 0 8px;">Mobile app for agents</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #6B7280; margin: 0; max-width: 720px;">Same backend, same data. Agents work their book, log follow-ups and mark attendance from the field.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD SHOWCASE -->
+<section style="background: #F7F8FA; border-top: 1px solid #D5DAE1; border-bottom: 1px solid #D5DAE1; padding: clamp(72px, 9vw, 112px) 24px;">
+  <div style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: clamp(32px, 5vw, 72px); align-items: center;">
+    <div data-reveal="1">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #3D5A80; font-weight: 600; margin-bottom: 14px;">Dashboard</div>
+      <h2 style="font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.015em; font-weight: 700; color: #1C1F26; margin: 0 0 16px;">Managers see the floor, not a spreadsheet.</h2>
+      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+        <li style="display: flex; gap: 10px; font-size: 15px; line-height: 1.5; color: #6B7280;"><span style="color: #3D5A80; font-weight: 700;">—</span> Funnel by stage</li>
+        <li style="display: flex; gap: 10px; font-size: 15px; line-height: 1.5; color: #6B7280;"><span style="color: #3D5A80; font-weight: 700;">—</span> Leads by source, team and owner</li>
+        <li style="display: flex; gap: 10px; font-size: 15px; line-height: 1.5; color: #6B7280;"><span style="color: #3D5A80; font-weight: 700;">—</span> Unassigned and missed follow-up counts</li>
+        <li style="display: flex; gap: 10px; font-size: 15px; line-height: 1.5; color: #6B7280;"><span style="color: #3D5A80; font-weight: 700;">—</span> Import job health</li>
+        <li style="display: flex; gap: 10px; font-size: 15px; line-height: 1.5; color: #6B7280;"><span style="color: #3D5A80; font-weight: 700;">—</span> Attendance snapshot</li>
+      </ul>
+    </div>
+    <div data-reveal="1">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Unassigned</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: #1C1F26; margin-top: 4px;">214</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Booked</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: #2F6F4E; margin-top: 4px;">88</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+          <div style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #6B7280; font-weight: 600;">Missed f/ups</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: #A33B3B; margin-top: 4px;">37</div>
+        </div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 8px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+          <span style="font-size: 13px; font-weight: 600; color: #1C1F26;">Leads by source · this week</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6B7280;">W37</span>
+        </div>
+        <div style="display: flex; align-items: flex-end; gap: 14px; height: 120px; padding: 0 4px;">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6B7280;">612</span><div style="width: 100%; max-width: 44px; height: 88px; background: #3D5A80; border-radius: 3px 3px 0 0;"></div><span style="font-size: 10px; color: #6B7280;">Housing</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6B7280;">487</span><div style="width: 100%; max-width: 44px; height: 70px; background: #5877A0; border-radius: 3px 3px 0 0;"></div><span style="font-size: 10px; color: #6B7280;">99acres</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6B7280;">340</span><div style="width: 100%; max-width: 44px; height: 49px; background: #7A9BBF; border-radius: 3px 3px 0 0;"></div><span style="font-size: 10px; color: #6B7280;">MagicBricks</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6B7280;">228</span><div style="width: 100%; max-width: 44px; height: 33px; background: #A9BED4; border-radius: 3px 3px 0 0;"></div><span style="font-size: 10px; color: #6B7280;">Meta</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6B7280;">104</span><div style="width: 100%; max-width: 44px; height: 15px; background: #CBD6E2; border-radius: 3px 3px 0 0;"></div><span style="font-size: 10px; color: #6B7280;">Walk-in</span></div>
+        </div>
+        <div style="border-top: 1px solid #EDF0F3; margin-top: 16px; padding-top: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 11px; color: #6B7280; margin-right: 4px;">Attendance today</span>
+          <span style="padding: 3px 10px; border-radius: 999px; background: rgba(47,111,78,0.1); color: #2F6F4E; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">Present 41</span>
+          <span style="padding: 3px 10px; border-radius: 999px; background: rgba(154,103,0,0.1); color: #9A6700; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">Half-day 6</span>
+          <span style="padding: 3px 10px; border-radius: 999px; background: rgba(163,59,59,0.1); color: #A33B3B; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;">Absent 3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLES -->
+<section style="background: #F1F3F5; padding: clamp(72px, 9vw, 112px) 24px;">
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <div data-reveal="1" style="max-width: 620px; margin-bottom: 48px;">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #3D5A80; font-weight: 600; margin-bottom: 14px;">Roles</div>
+      <h2 style="font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.015em; font-weight: 700; color: #1C1F26; margin: 0;">Every seat sees exactly its job.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 0;">
+      <div data-reveal="1" style="padding: 8px clamp(16px, 3vw, 40px) 8px 0; border-right: 1px solid #D5DAE1;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path></svg>
+          <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #1C1F26; font-weight: 700;">Superadmin</span>
+        </div>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; color: #6B7280;">
+          <li>Org, plans and branding</li>
+          <li>Tenant management</li>
+          <li>Impersonation for support</li>
+          <li>Every team's data</li>
+          <li>Company profile and billing</li>
+        </ul>
+      </div>
+      <div data-reveal="1" style="padding: 8px clamp(16px, 3vw, 40px); border-right: 1px solid #D5DAE1;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"></path><circle cx="10" cy="8" r="5"></circle><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"></path></svg>
+          <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #1C1F26; font-weight: 700;">Manager</span>
+        </div>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; color: #6B7280;">
+          <li>Team book and pipeline</li>
+          <li>Assignment and reassignment</li>
+          <li>Imports and exports</li>
+          <li>Leave approvals</li>
+          <li>Team performance</li>
+        </ul>
+      </div>
+      <div data-reveal="1" style="padding: 8px 0 8px clamp(16px, 3vw, 40px);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3D5A80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+          <span style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #1C1F26; font-weight: 700;">Agent</span>
+        </div>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; color: #6B7280;">
+          <li>My leads and open tasks</li>
+          <li>Follow-ups due today</li>
+          <li>Notes and activities</li>
+          <li>My attendance</li>
+          <li>Mobile app in the field</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background: #F7F8FA; border-top: 1px solid #D5DAE1; padding: clamp(72px, 9vw, 112px) 24px;">
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <div data-reveal="1" style="max-width: 620px; margin-bottom: 48px;">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #3D5A80; font-weight: 600; margin-bottom: 14px;">Pricing</div>
+      <h2 style="font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.015em; font-weight: 700; color: #1C1F26; margin: 0 0 14px;">Priced by seats and lead quota.</h2>
+      <p style="font-size: 16px; line-height: 1.65; color: #6B7280; margin: 0;">Monthly, in INR. No per-lead charges inside your quota.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 20px; align-items: stretch;">
+      <sc-for list="{{ plans }}" as="plan" hint-placeholder-count="4">
+        <div style="background: #FFFFFF; border: 1px solid #D5DAE1; border-top: {{ plan.topRule }}; border-radius: 8px; padding: 26px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); display: flex; flex-direction: column; transition: all 150ms ease-out;" style-hover="transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(28,31,38,0.06);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+            <span style="font-size: 14px; font-weight: 600; color: #1C1F26;">{{ plan.name }}</span>
+            <sc-if value="{{ plan.recommended }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #2C4260; background: #E4EAF1; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Recommended</span>
+            </sc-if>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: #1C1F26;">{{ plan.price }}</span>
+            <span style="font-size: 13px; color: #6B7280;">/mo</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; flex: 1;">
+            <div style="font-size: 13.5px; color: #6B7280;"><span style="font-family: 'IBM Plex Mono', monospace; color: #1C1F26; font-weight: 600;">{{ plan.seats }}</span> seats</div>
+            <div style="font-size: 13.5px; color: #6B7280;"><span style="font-family: 'IBM Plex Mono', monospace; color: #1C1F26; font-weight: 600;">{{ plan.leads }}</span> leads</div>
+          </div>
+          <a href="#cta" style="text-align: center; padding: 10px 16px; border: 1px solid #3D5A80; border-radius: 6px; color: #2C4260; font-size: 14px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #3D5A80; color: #FFFFFF;">Book a demo</a>
+        </div>
+      </sc-for>
+    </div>
+    <p data-reveal="1" style="font-size: 13.5px; line-height: 1.65; color: #6B7280; margin: 28px 0 0; max-width: 760px;">All plans include company branding. Higher tiers add imports, exports, bulk reassign, white-label, priority support and dedicated onboarding.</p>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section id="security" style="background: #1C1F26; background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px); background-size: 36px 36px; padding: clamp(64px, 8vw, 96px) 24px;">
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <div data-reveal="1" style="margin-bottom: 44px;">
+      <div style="font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 14px;">Security &amp; Tenancy</div>
+      <h2 style="font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.015em; font-weight: 700; color: #E8EAEF; margin: 0 0 14px; max-width: 620px;">One tenant per company, one role per view.</h2>
+      <p style="font-size: 15px; line-height: 1.65; color: rgba(232,234,239,0.65); margin: 0; max-width: 620px;">Data separation is enforced in the product, not promised in a slide.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 28px;">
+      <div data-reveal="1" style="display: flex; flex-direction: column; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600; display: block; margin-bottom: 4px;">Isolated tenant</strong>Each company runs in its own tenant.</p>
+      </div>
+      <div data-reveal="1" style="display: flex; flex-direction: column; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"></path><circle cx="16.5" cy="7.5" r=".5"></circle></svg>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600; display: block; margin-bottom: 4px;">JWT access</strong>Short-lived tokens with httpOnly refresh cookies.</p>
+      </div>
+      <div data-reveal="1" style="display: flex; flex-direction: column; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600; display: block; margin-bottom: 4px;">Role-scoped data</strong>Access is scoped by role at every query.</p>
+      </div>
+      <div data-reveal="1" style="display: flex; flex-direction: column; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A9BBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="m9 15 2 2 4-4"></path></svg>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: rgba(232,234,239,0.72);"><strong style="color: #E8EAEF; font-weight: 600; display: block; margin-bottom: 4px;">Company profile</strong>PAN, GST and RERA on the tenant record.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section id="cta" style="background: #F7F8FA; padding: clamp(72px, 9vw, 112px) 24px; text-align: center;">
+  <div data-reveal="1" style="max-width: 640px; margin: 0 auto;">
+    <h2 style="font-size: clamp(28px, 3.2vw, 38px); letter-spacing: -0.015em; font-weight: 700; color: #1C1F26; margin: 0 0 28px;">Put your sales floor in one console.</h2>
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <a href="https://velospherecrm.com/login" style="padding: 13px 28px; background: #3D5A80; border-radius: 6px; color: #FFFFFF; font-size: 15px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #2C4260;">Book a demo</a>
+      <a href="https://velospherecrm.com/login" style="padding: 13px 28px; border: 1px solid #3D5A80; border-radius: 6px; color: #2C4260; font-size: 15px; font-weight: 600; transition: all 150ms ease-out;" style-hover="background: #E4EAF1;">Sign in</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER — robots: never link or index /leads, /admin, /hrms -->
+<footer style="background: #1C1F26; padding: clamp(56px, 7vw, 80px) 24px 40px;">
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 40px; margin-bottom: 56px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <span role="img" aria-label="Velosphere logo" style="width: 28px; height: 28px; background: #0C0E13; border-radius: 6px; box-shadow: inset 0 0 0 1.5px #3D5A80; display: flex; align-items: center; justify-content: center; color: #E8EAEF; font-weight: 700; font-size: 14px;">V</span>
+          <span style="font-weight: 600; font-size: 15px; color: #E8EAEF;">Velosphere</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.6; color: rgba(232,234,239,0.55);">Enterprise real estate lead CRM — assignment, attendance, and pipeline control in one workspace.</p>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 14px;">Product</div>
+        <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13.5px;">
+          <a href="#product" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Leads &amp; pipeline</a>
+          <a href="#pipeline" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Assignment</a>
+          <a href="#hr" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">HR &amp; Attendance</a>
+          <a href="#pricing" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Pricing</a>
+          <a href="#security" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Security</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 14px;">Company</div>
+        <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13.5px;">
+          <a href="https://velospherecrm.com" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">velospherecrm.com</a>
+          <a href="#cta" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Book a demo</a>
+          <a href="https://velospherecrm.com/login" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Sign in</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 14px;">Legal</div>
+        <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13.5px;">
+          <a href="https://velospherecrm.com" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Privacy policy</a>
+          <a href="https://velospherecrm.com" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Terms of service</a>
+          <a href="https://velospherecrm.com" style="color: rgba(232,234,239,0.72);" style-hover="color: #E8EAEF;">Refund policy</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #7A9BBF; font-weight: 600; margin-bottom: 14px;">Contact</div>
+        <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13.5px; color: rgba(232,234,239,0.72);">
+          <span>Sales — book a demo</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">Asia/Kolkata (IST)</span>
+        </div>
+      </div>
+    </div>
+    <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: rgba(232,234,239,0.45);">
+      <span>© 2026 Velosphere CRM. All rights reserved.</span>
+      <span>Operating hours and timestamps in Asia/Kolkata.</span>
+    </div>
+  </div>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;revealAnimations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;leadBalance&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:18420,&quot;min&quot;:0,&quot;max&quot;:25000,&quot;step&quot;:100,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hero mock&quot;}}">
+class Component extends DCLogic {
+  navRef = React.createRef();
+  renderVals() {
+    const bal = this.props.leadBalance ?? 18420;
+    const quota = 25000;
+    return {
+      navRef: this.navRef,
+      leadBalanceFmt: bal.toLocaleString('en-IN'),
+      quotaPct: Math.min(100, Math.round(bal / quota * 1000) / 10) + '%',
+      leads: [
+        { name: 'Rohit Nair', city: 'Pune', budget: '₹85L–1.1Cr', source: 'Housing.com', stage: 'Opportunity', stBg: '#E4EAF1', stFg: '#2C4260', owner: 'Ananya Iyer', updated: '12m', dot: '#A33B3B' },
+        { name: 'Sneha Kulkarni', city: 'Mumbai', budget: '₹1.4–1.8Cr', source: '99acres', stage: 'Prospect', stBg: '#EDF0F3', stFg: '#4B5563', owner: 'Vikram Shah', updated: '38m', dot: '#9A6700' },
+        { name: 'Arjun Mehta', city: 'Bengaluru', budget: '₹72–90L', source: 'MagicBricks', stage: 'Incoming', stBg: '#EDF0F3', stFg: '#4B5563', owner: 'Priya Menon', updated: '1h', dot: '#A33B3B' },
+        { name: 'Kavita Reddy', city: 'Hyderabad', budget: '₹55–68L', source: 'Walk-in', stage: 'Booked', stBg: 'rgba(47,111,78,0.12)', stFg: '#2F6F4E', owner: 'Rahul Verma', updated: '2h', dot: '#9A6700' },
+        { name: 'Imran Qureshi', city: 'Pune', budget: '₹95L–1.2Cr', source: 'Facebook Ads', stage: 'Opportunity', stBg: '#E4EAF1', stFg: '#2C4260', owner: 'Ananya Iyer', updated: '3h', dot: '#3D5A80' },
+        { name: 'Deepa Joshi', city: 'Thane', budget: '₹48–60L', source: 'Referral', stage: 'Lost', stBg: 'rgba(163,59,59,0.1)', stFg: '#A33B3B', owner: 'Vikram Shah', updated: '5h', dot: '#3D5A80' }
+      ],
+      plans: [
+        { name: 'Team 15', price: '₹9,999', seats: '15', leads: '25,000', recommended: false, topRule: '1px solid #D5DAE1' },
+        { name: 'Team 30', price: '₹19,999', seats: '30', leads: '50,000', recommended: true, topRule: '3px solid #3D5A80' },
+        { name: 'Team 50', price: '₹34,999', seats: '50', leads: '100,000', recommended: false, topRule: '1px solid #D5DAE1' },
+        { name: 'Enterprise 75+', price: '₹59,999', seats: '100', leads: '250,000', recommended: false, topRule: '1px solid #D5DAE1' }
+      ]
+    };
+  }
+  componentDidMount() {
+    this._onScroll = () => {
+      const el = this.navRef.current;
+      if (!el) return;
+      if (window.scrollY > 8) {
+        el.style.background = 'rgba(255,255,255,0.85)';
+        el.style.backdropFilter = 'blur(10px)';
+        el.style.webkitBackdropFilter = 'blur(10px)';
+      } else {
+        el.style.background = '#FFFFFF';
+        el.style.backdropFilter = 'none';
+      }
+    };
+    window.addEventListener('scroll', this._onScroll, { passive: true });
+    const wantMotion = (this.props.revealAnimations ?? true) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (wantMotion) {
+      const els = Array.from(document.querySelectorAll('[data-reveal]'));
+      els.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(12px)';
+        el.style.transition = 'opacity 500ms ease-out, transform 500ms ease-out';
+      });
+      let stagger = 0, lastTime = 0;
+      this._io = new IntersectionObserver(entries => {
+        const now = performance.now();
+        if (now - lastTime > 300) stagger = 0;
+        lastTime = now;
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          const el = e.target;
+          setTimeout(() => { el.style.opacity = '1'; el.style.transform = 'none'; }, stagger);
+          stagger += 60;
+          this._io.unobserve(el);
+        });
+      }, { threshold: 0.1 });
+      els.forEach(el => this._io.observe(el));
+    }
+  }
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this._onScroll);
+    if (this._io) this._io.disconnect();
+  }
+}
+</script>
+</body>
+</html>

@@ -24,31 +24,32 @@ function wireShape(
   vertexSize: number,
 ) {
   const group = new THREE.Group();
-  const edges = new THREE.EdgesGeometry(geometry, 18);
-  const lines = new THREE.LineSegments(
-    edges,
-    new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity,
-      depthWrite: false,
-    }),
+  const edges = new THREE.EdgesGeometry(geometry, 12);
+  group.add(
+    new THREE.LineSegments(
+      edges,
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+      }),
+    ),
   );
-  group.add(lines);
 
   const pos = geometry.getAttribute('position');
   const seen = new Set<string>();
-  const sph = new THREE.SphereGeometry(vertexSize, 10, 10);
+  const sph = new THREE.SphereGeometry(vertexSize, 8, 8);
   const mat = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
-    opacity: Math.min(1, opacity + 0.25),
+    opacity: Math.min(1, opacity + 0.35),
   });
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
-    const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
+    const key = `${x.toFixed(2)}|${y.toFixed(2)}|${z.toFixed(2)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const dot = new THREE.Mesh(sph, mat);
@@ -72,60 +73,53 @@ export function LoginScene3D({ className }: Props) {
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.style.cssText =
       'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x080a0e, 0.045);
+    scene.fog = new THREE.FogExp2(0x07090d, 0.055);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
-    camera.position.set(0, 0.15, 11);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 80);
+    camera.position.set(0, 0.15, 9.2);
 
-    const cluster = new THREE.Group();
-    scene.add(cluster);
+    const rig = new THREE.Group();
+    scene.add(rig);
 
-    const pieces: { obj: THREE.Object3D; spinX: number; spinY: number }[] = [];
+    const core = wireShape(new THREE.IcosahedronGeometry(1.85, 1), 0xc5dff6, 0.92, 0.045);
+    rig.add(core);
 
-    const add = (
-      obj: THREE.Object3D,
-      x: number,
-      y: number,
-      z: number,
-      scale: number,
-      spinX: number,
-      spinY: number,
-    ) => {
-      obj.position.set(x, y, z);
-      obj.scale.setScalar(scale);
-      cluster.add(obj);
-      pieces.push({ obj, spinX, spinY });
-    };
+    const ringA = wireShape(new THREE.TorusGeometry(2.55, 0.012, 8, 80), 0x94bce3, 0.7, 0.02);
+    ringA.rotation.x = Math.PI / 2.4;
+    rig.add(ringA);
+    const ringB = wireShape(new THREE.TorusGeometry(3.15, 0.008, 8, 96), 0x7fd8ff, 0.45, 0.016);
+    ringB.rotation.x = Math.PI / 1.7;
+    ringB.rotation.y = 0.6;
+    rig.add(ringB);
 
-    add(wireShape(new THREE.IcosahedronGeometry(2.15, 1), 0x94bce3, 0.42, 0.035), 0.2, 0.1, 0, 1, 0.07, 0.11);
-    add(wireShape(new THREE.OctahedronGeometry(1.15), 0x7fd8ff, 0.5, 0.04), -3.4, 1.5, -0.8, 1, 0.12, -0.08);
-    add(wireShape(new THREE.TetrahedronGeometry(1.05), 0x749dc4, 0.48, 0.045), 3.6, -1.4, -0.4, 1, -0.09, 0.14);
-    add(wireShape(new THREE.DodecahedronGeometry(0.95), 0xb5d9fd, 0.38, 0.03), 2.8, 2.1, -1.6, 1, 0.06, -0.12);
-    add(wireShape(new THREE.TorusGeometry(1.15, 0.22, 12, 36), 0x3d5a80, 0.55, 0.02), -2.6, -2.0, -0.6, 1, 0.15, 0.05);
-    add(wireShape(new THREE.IcosahedronGeometry(0.7, 0), 0xe9f4ff, 0.55, 0.04), 0.8, -2.4, 0.6, 1, -0.16, 0.1);
-    add(wireShape(new THREE.OctahedronGeometry(0.55), 0x94bce3, 0.4, 0.035), -4.2, -0.4, -2.2, 1, 0.08, 0.18);
+    const satellites = [
+      wireShape(new THREE.OctahedronGeometry(0.28), 0xe9f4ff, 0.95, 0.03),
+      wireShape(new THREE.TetrahedronGeometry(0.24), 0x94bce3, 0.9, 0.028),
+      wireShape(new THREE.IcosahedronGeometry(0.2, 0), 0xb5d9fd, 0.85, 0.024),
+    ];
+    satellites.forEach((sat) => rig.add(sat));
 
     const starGeo = new THREE.BufferGeometry();
-    const starCount = 220;
+    const starCount = 280;
     const starPos = new Float32Array(starCount * 3);
     for (let i = 0; i < starCount; i++) {
-      starPos[i * 3] = (Math.random() - 0.5) * 28;
-      starPos[i * 3 + 1] = (Math.random() - 0.5) * 16;
-      starPos[i * 3 + 2] = (Math.random() - 0.5) * 14 - 4;
+      starPos[i * 3] = (Math.random() - 0.5) * 22;
+      starPos[i * 3 + 1] = (Math.random() - 0.5) * 14;
+      starPos[i * 3 + 2] = (Math.random() - 0.5) * 10 - 2;
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     const stars = new THREE.Points(
       starGeo,
       new THREE.PointsMaterial({
-        color: 0x94bce3,
-        size: 0.035,
+        color: 0x9ec4ea,
+        size: 0.028,
         transparent: true,
         opacity: 0.55,
         sizeAttenuation: true,
@@ -134,31 +128,45 @@ export function LoginScene3D({ className }: Props) {
     );
     scene.add(stars);
 
-    let pointerX = 0;
-    let pointerY = 0;
-    let targetTiltX = 0;
-    let targetTiltY = 0;
-    let tiltX = 0;
-    let tiltY = 0;
-    let tiltVX = 0;
-    let tiltVY = 0;
-    let spin = 0.12;
-    let yaw = 0;
-    let havePointer = false;
+    let yaw = 0.4;
+    let pitch = 0.15;
+    let velYaw = 0;
+    let velPitch = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let hoverX = 0;
+    let hoverY = 0;
 
-    const onPointerMove = (e: PointerEvent) => {
-      if (reduce) return;
-      const nx = e.clientX / window.innerWidth - 0.5;
-      const ny = e.clientY / window.innerHeight - 0.5;
-      if (havePointer) {
-        spin = THREE.MathUtils.clamp(spin + (nx - pointerX) * 1.6, -0.85, 0.85);
-      }
-      pointerX = nx;
-      pointerY = ny;
-      havePointer = true;
-      targetTiltY = nx * 0.55;
-      targetTiltX = -ny * 0.38;
+    const onDown = (e: PointerEvent) => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      host.setPointerCapture(e.pointerId);
     };
+    const onMove = (e: PointerEvent) => {
+      const rect = host.getBoundingClientRect();
+      hoverX = (e.clientX - rect.left) / Math.max(rect.width, 1) - 0.5;
+      hoverY = (e.clientY - rect.top) / Math.max(rect.height, 1) - 0.5;
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      velYaw = dx * 0.008;
+      velPitch = dy * 0.008;
+      yaw += velYaw;
+      pitch = THREE.MathUtils.clamp(pitch + velPitch, -0.9, 0.9);
+    };
+    const onUp = (e: PointerEvent) => {
+      dragging = false;
+      if (host.hasPointerCapture(e.pointerId)) host.releasePointerCapture(e.pointerId);
+    };
+
+    host.addEventListener('pointerdown', onDown);
+    host.addEventListener('pointermove', onMove);
+    host.addEventListener('pointerup', onUp);
+    host.addEventListener('pointercancel', onUp);
 
     const resize = () => {
       const { width, height } = host.getBoundingClientRect();
@@ -166,9 +174,8 @@ export function LoginScene3D({ className }: Props) {
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      if (reduce) renderer.render(scene, camera);
+      renderer.render(scene, camera);
     };
-
     const ro = new ResizeObserver(resize);
     ro.observe(host);
     resize();
@@ -176,7 +183,6 @@ export function LoginScene3D({ className }: Props) {
     let last = performance.now();
     let elapsed = 0;
     let raf = 0;
-
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const now = performance.now();
@@ -184,40 +190,50 @@ export function LoginScene3D({ className }: Props) {
       last = now;
       elapsed += dt;
 
-      const stiffness = 28;
-      const damping = 2 * Math.sqrt(stiffness) * 0.88;
-      tiltVX += ((targetTiltX - tiltX) * stiffness - tiltVX * damping) * dt;
-      tiltVY += ((targetTiltY - tiltY) * stiffness - tiltVY * damping) * dt;
-      tiltX += tiltVX * dt;
-      tiltY += tiltVY * dt;
-      spin += (0.12 - spin) * (1 - Math.exp(-1.15 * dt));
-      yaw += spin * dt;
+      if (!dragging && !reduce) {
+        velYaw += (0.18 - velYaw) * (1 - Math.exp(-0.6 * dt));
+        velPitch *= Math.exp(-1.4 * dt);
+        yaw += velYaw * dt;
+        pitch = THREE.MathUtils.clamp(pitch + velPitch * dt, -0.9, 0.9);
+      } else if (!dragging) {
+        velYaw *= Math.exp(-2 * dt);
+        velPitch *= Math.exp(-2 * dt);
+      }
 
-      cluster.rotation.x = tiltX + Math.sin(elapsed * 0.28) * 0.03;
-      cluster.rotation.y = tiltY + yaw;
-      cluster.rotation.z = pointerY * 0.04;
-      cluster.position.x = THREE.MathUtils.damp(cluster.position.x, pointerX * 0.55, 4, dt);
-      cluster.position.y = THREE.MathUtils.damp(cluster.position.y, -pointerY * 0.4, 4, dt);
+      const leanX = reduce ? 0 : hoverY * -0.18;
+      const leanY = reduce ? 0 : hoverX * 0.22;
+      rig.rotation.y = THREE.MathUtils.damp(rig.rotation.y, yaw + leanY, 8, dt);
+      rig.rotation.x = THREE.MathUtils.damp(rig.rotation.x, pitch + leanX, 8, dt);
 
-      pieces.forEach((p) => {
-        p.obj.rotation.x += p.spinX * dt;
-        p.obj.rotation.y += p.spinY * dt;
-      });
-      stars.rotation.y = elapsed * 0.012;
+      if (!reduce) {
+        ringA.rotation.z += dt * 0.15;
+        ringB.rotation.z -= dt * 0.08;
+        satellites.forEach((sat, i) => {
+          const speed = 0.35 + i * 0.12;
+          const radius = 2.7 + i * 0.45;
+          const a = elapsed * speed + i * 2.1;
+          sat.position.set(
+            Math.cos(a) * radius,
+            Math.sin(a * 0.8 + i) * 0.85,
+            Math.sin(a) * radius * 0.35,
+          );
+          sat.rotation.y += dt * (0.6 + i * 0.2);
+          sat.rotation.x += dt * 0.25;
+        });
+        stars.rotation.y = elapsed * 0.01;
+      }
 
       renderer.render(scene, camera);
     };
 
-    if (reduce) {
-      renderer.render(scene, camera);
-    } else {
-      tick();
-      window.addEventListener('pointermove', onPointerMove, { passive: true });
-    }
+    tick();
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('pointermove', onPointerMove);
+      host.removeEventListener('pointerdown', onDown);
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerup', onUp);
+      host.removeEventListener('pointercancel', onUp);
       ro.disconnect();
       disposeObject3D(scene);
       renderer.dispose();

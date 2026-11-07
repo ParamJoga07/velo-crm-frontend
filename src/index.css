@@ -233,6 +233,16 @@ html.dark body {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+.login-sheet {
+  background: #10141c;
+  color: #e8eaef;
+}
+
+.login-light .login-sheet {
+  background: #f7f8fa;
+  color: #1c1f26;
+}
+
 @keyframes sale-marquee {
   from {
     transform: translateX(0);
