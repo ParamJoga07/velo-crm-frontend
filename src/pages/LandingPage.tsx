@@ -1581,10 +1581,11 @@ export function LandingPage() {
             </div>
             <div>
               <div className="vs-foot-h">Legal</div>
-              <div className="flex flex-col gap-2 text-[13.5px] text-[#E8EAEF]/[0.45]">
-                <span>Privacy policy</span>
-                <span>Terms of service</span>
-                <span>Refund policy</span>
+              <div className="flex flex-col gap-2 text-[13.5px]">
+                <Link to="/privacy" className="vs-foot-link">Privacy policy</Link>
+                <Link to="/terms" className="vs-foot-link">Terms of service</Link>
+                <Link to="/refund" className="vs-foot-link">Refund policy</Link>
+                <Link to="/account-deletion" className="vs-foot-link">Delete account</Link>
               </div>
             </div>
             <div>

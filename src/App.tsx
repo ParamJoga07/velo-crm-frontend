@@ -3,6 +3,12 @@ import { useAuthHasHydrated, useAuthStore } from '@/stores/auth';
 import { AppShell } from '@/layouts/AppShell';
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
+import {
+  AccountDeletionPage,
+  PrivacyPage,
+  RefundPage,
+  TermsPage,
+} from '@/pages/LegalPage';
 import { LeadsPage } from '@/pages/LeadsPage';
 import { LeadDetailPage } from '@/pages/LeadDetailPage';
 import { LeadCreatePage } from '@/pages/LeadCreatePage';
@@ -63,6 +69,10 @@ export function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/refund" element={<RefundPage />} />
+      <Route path="/account-deletion" element={<AccountDeletionPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="dashboard" element={<DashboardRoute />} />

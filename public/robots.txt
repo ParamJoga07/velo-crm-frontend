@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
 Allow: /login
+Allow: /privacy
+Allow: /terms
+Allow: /refund
+Allow: /account-deletion
 Disallow: /dashboard
 Disallow: /leads
 Disallow: /performance
